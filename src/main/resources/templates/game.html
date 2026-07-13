@@ -1,7 +1,6 @@
-<!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<canvas id="board" width="288" height="416"></canvas>
 <head>
-    <meta charset="UTF-8">
+    <meta charaset="UTF-8">
     <title>言葉落とし</title>
 
     <link rel="stylesheet" th:href="@{/css/style.css}">
@@ -16,17 +15,9 @@
     <span>ライフ：<span id="life">3</span></span>
 </div>
 
-<div id="game-area">
+<canvas id="board" width="288" height="416"></canvas>
 
-</div>
-
-<div class="input-area">
-    <input
-        type="text"
-        id="answer"
-        placeholder="単語を入力">
-    <button>送信</button>
-</div>
+<script th:src="@{/js/game.js}"></script>
 
 </body>
 </html>
