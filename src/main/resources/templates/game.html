@@ -1,14 +1,32 @@
 <!DOCTYPE html>
-<!-- xmlns:th="..." を書くことで、th:から始まる特殊な属性(Thymeleaf構文)が使えるようになる -->
-<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <!-- th:text="${title}" : ControllerでModelに入れた "title" の値をここに表示する -->
-    <!-- 通常のテキスト("言葉落とし")はブラウザ未対応時のフォールバック表示用 -->
-    <title th:text="${title}">言葉落とし</title>
+    <title>言葉落とし</title>
+
+    <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
+
 <body>
-    <h1 th:text="${title}">言葉落とし</h1>
-    <p>Spring Bootからこの画面が表示されていれば、Phase 1は成功です。</p>
+
+<h1>言葉落とし</h1>
+
+<div class="status">
+    <span>スコア：<span id="score">0</span></span>
+    <span>ライフ：<span id="life">3</span></span>
+</div>
+
+<div id="game-area">
+
+</div>
+
+<div class="input-area">
+    <input
+        type="text"
+        id="answer"
+        placeholder="単語を入力">
+    <button>送信</button>
+</div>
+
 </body>
 </html>
