@@ -1,0 +1,15 @@
+# Mavenがビルド時に作る成果物フォルダ(コンパイル結果など)。毎回自動生成されるので管理不要
+target/
+
+# IDE(VS Code / IntelliJ)ごとの個人設定ファイル。人によって内容が違うので共有しない
+.vscode/
+.idea/
+*.iml
+
+# OSが自動生成する不要ファイル(Windows/Mac)
+.DS_Store
+Thumbs.db
+
+# H2データベースのファイル(もしファイル保存モードにした場合)
+*.db
+*.trace.db
