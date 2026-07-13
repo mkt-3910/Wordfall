@@ -1,7 +1,7 @@
 package com.example.wordfall;
 
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autocofigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 // @SpringBootApplication は3つのアノテーションをまとめたもの:
 // ①@Configuration  → このクラスが設定用のクラスであることを示す
