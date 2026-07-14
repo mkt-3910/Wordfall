@@ -6,7 +6,7 @@ const COLS = 9;
 const ROWS = 13;
 const CELL = 32;
 
-// 盤面データ:各マスに { letter: "A" } か null が入る
+// 盤面データ:各マスに文字(例:"A")か null が入る
 let grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
 
 let score = 0;
@@ -39,7 +39,6 @@ function makePiece(key) {
     return {
         key,
         size: def.size,
-        // cells: [x, y, letter] の組にする
         cells: def.cells.map(([x, y]) => [x, y, randomLetter()]),
         x: Math.floor((COLS - def.size) / 2),
         y: 0,
@@ -60,25 +59,151 @@ function collides(piece, offX = 0, offY = 0, cells = piece.cells) {
 
 function rotatePiece(piece) {
     const s = piece.size;
-    // 座標だけ回転させ、文字はそのまま引き継ぐ
     const rotated = piece.cells.map(([x, y, letter]) => [s - 1 - y, x, letter]);
     return { ...piece, cells: rotated };
 }
 
-function lockPiece() {
+// 盤面から「縦・横・斜め」の全ライン(マスの並び)を取り出す
+function getAllLines() {
+    const lines = [];
+
+    // 横方向:各行を1本のラインとする
+    for (let r = 0; r < ROWS; r++) {
+        const line = [];
+        for (let c = 0; c < COLS; c++) line.push({ r, c });
+        lines.push(line);
+    }
+
+    // 縦方向:各列を1本のラインとする
+    for (let c = 0; c < COLS; c++) {
+        const line = [];
+        for (let r = 0; r < ROWS; r++) line.push({ r, c });
+        lines.push(line);
+    }
+
+    // 斜め(右下がり ↘)
+    for (let startCol = 0; startCol < COLS; startCol++) {
+        const line = [];
+        let r = 0, c = startCol;
+        while (r < ROWS && c < COLS) { line.push({ r, c }); r++; c++; }
+        lines.push(line);
+    }
+    for (let startRow = 1; startRow < ROWS; startRow++) {
+        const line = [];
+        let r = startRow, c = 0;
+        while (r < ROWS && c < COLS) { line.push({ r, c }); r++; c++; }
+        lines.push(line);
+    }
+
+    // 斜め(右上がり ↗)
+    for (let startCol = 0; startCol < COLS; startCol++) {
+        const line = [];
+        let r = ROWS - 1, c = startCol;
+        while (r >= 0 && c < COLS) { line.push({ r, c }); r--; c++; }
+        lines.push(line);
+    }
+    for (let startRow = ROWS - 2; startRow >= 0; startRow--) {
+        const line = [];
+        let r = startRow, c = 0;
+        while (r >= 0 && c < COLS) { line.push({ r, c }); r--; c++; }
+        lines.push(line);
+    }
+
+    return lines;
+}
+
+// 1本のライン(マスの配列)の中から、文字が3つ以上連続している部分を取り出す
+function findRuns(line) {
+    const runs = [];
+    let cur = [];
+    for (const { r, c } of line) {
+        if (grid[r][c] !== null) {
+            cur.push({ r, c, ch: grid[r][c] });
+        } else {
+            if (cur.length >= 3) runs.push(cur);
+            cur = [];
+        }
+    }
+    if (cur.length >= 3) runs.push(cur);
+    return runs;
+}
+
+// 盤面全体から「単語判定の候補」(文字列+座標)を集める
+function collectCandidateRuns() {
+    const lines = getAllLines();
+    const candidates = [];
+    for (const line of lines) {
+        for (const run of findRuns(line)) {
+            const word = run.map(cell => cell.ch).join('');
+            candidates.push({ word, cells: run });
+        }
+    }
+    return candidates;
+}
+
+// 各列ごとに、消えたマスの分だけ上のマスを下に詰める(重力)
+function applyGravity() {
+    for (let c = 0; c < COLS; c++) {
+        let writeRow = ROWS - 1;
+        for (let r = ROWS - 1; r >= 0; r--) {
+            if (grid[r][c] !== null) {
+                grid[writeRow][c] = grid[r][c];
+                if (writeRow !== r) grid[r][c] = null;
+                writeRow--;
+            }
+        }
+        for (let r = writeRow; r >= 0; r--) grid[r][c] = null;
+    }
+}
+
+async function lockPiece() {
+    // ミノを盤面に固定する
     for (const [cx, cy, letter] of current.cells) {
         const gx = current.x + cx;
         const gy = current.y + cy;
         if (gy >= 0) grid[gy][gx] = letter;
     }
-    // 今後Phase3で、ここで単語判定APIを呼び出す予定
-    console.log(collectCandidateWords());
+
+    // 候補(文字列+座標)を集める
+    const candidates = collectCandidateRuns();
+
+    // 消すマスを座標の重複なしで集めるための入れ物
+    const cellsToClear = new Set();
+
+    // 候補を1つずつサーバーに問い合わせる(答えが来るまで待つ)
+    for (const candidate of candidates) {
+        const res = await fetch(`/api/check-word?word=${candidate.word}`);
+        const isWord = await res.json();
+
+        if (isWord) {
+            score += candidate.word.length * 10;
+            for (const cell of candidate.cells) {
+                cellsToClear.add(`${cell.r},${cell.c}`);
+            }
+        }
+    }
+
+    // 実際にマスを消す
+    for (const key of cellsToClear) {
+        const [r, c] = key.split(',').map(Number);
+        grid[r][c] = null;
+    }
+
+    // 消えた分、各列で上のマスを下に詰める
+    applyGravity();
+
+    // スコア表示を更新
+    document.getElementById('score').textContent = score;
+
+    // 次のミノを出す
     current = makePiece(randomKey());
     if (collides(current)) {
         life--;
         document.getElementById('life').textContent = life;
         grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
     }
+
+    draw();
 }
 
 function moveHorizontal(dir) {
@@ -96,11 +221,11 @@ function tryRotate() {
     }
 }
 
-function softDrop() {
+async function softDrop() {
     if (!collides(current, 0, 1)) {
         current.y++;
     } else {
-        lockPiece();
+        await lockPiece();
     }
     draw();
 }
@@ -108,7 +233,6 @@ function softDrop() {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // マス目線
     ctx.strokeStyle = "rgba(237,232,222,0.08)";
     for (let c = 0; c <= COLS; c++) {
         ctx.beginPath();
@@ -123,14 +247,12 @@ function draw() {
         ctx.stroke();
     }
 
-    // 積まれた文字
     for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
             if (grid[r][c]) drawLetter(c, r, grid[r][c]);
         }
     }
 
-    // 落下中のミノ(4マス分)
     for (const [cx, cy, letter] of current.cells) {
         const gy = current.y + cy;
         if (gy >= 0) drawLetter(current.x + cx, gy, letter);
@@ -149,74 +271,17 @@ function drawLetter(col, row, letter) {
     ctx.fillText(letter, x + CELL / 2, y + CELL / 2);
 }
 
-// キー操作
-window.addEventListener('keydown', (e) => {
+// キー操作(1箇所にまとめる)
+window.addEventListener('keydown', async (e) => {
     if (e.key === 'ArrowLeft') { e.preventDefault(); moveHorizontal(-1); }
     if (e.key === 'ArrowRight') { e.preventDefault(); moveHorizontal(1); }
-    if (e.key === 'ArrowDown') { e.preventDefault(); softDrop(); }
+    if (e.key === 'ArrowDown') { e.preventDefault(); await softDrop(); }
     if (e.key === 'ArrowUp') { e.preventDefault(); tryRotate(); }
 });
 
 // 一定間隔で自動落下
-setInterval(() => {
-    softDrop();
+setInterval(async () => {
+    await softDrop();
 }, 700);
-
-// 盤面から「縦・横・斜め」の全ライン(マスの並び)を取り出す
-function getAllLines() {
-    const lines = [];
-}
-
-    //横方向・各列を1本のラインとする
-    for(let c = 0; c < COLS; c++) {
-        const line = [];
-        for(let r = 0; r < ROWS; r++) line.push({r,c});
-        lines.push(line);
-    }
-
-    // 斜め(右下がり ↘):左端・上端から始まる全ての斜めラインを集める
-    for (let startCol = 0; startCol < COLS; startCol++) {
-        const line = [];
-        let r = ROWS - 1, c = startCol;
-        while( r >= 0 && c < COLS) { line.push({ r,c}); r--; c++; }
-        lines.push(line);
-    }
-    for (let startRow = ROWS -2; startRow >= 0; startRow--) {
-        const line = [];
-        let r = startRow, c= 0;
-        while(r >= 0 && c < COLS) { line.push({ r,c }); r--; c++; }
-        line.push(line);
-    }
-
-    return lines;
-
-    //1本のライン(マスの配列)の中から、文字が3つ以上連続している部分を取り出す
-    function findRuns(line) {
-        const runs = [];
-        let cur = [];
-        for(const {r,c} of line) {
-            if(grid[r][c] !== null) {
-                cur.push({ r,c, ch: grid[r][c] });
-            } else {
-                if(cur.length >= 3) runs.push(cur);
-                cur = [];
-            }
-        }
-        if(cur.length >= 3) runs.push(cur);
-        return runs;
-    }
-
-    // 盤面全体から「単語判定の候補」になりうる文字列を集めて、コンソールに表示する(確認用)
-    function collectCandidateWords() {
-        const lines = getAllLines();
-        const candidates = [];
-        for (const line of lines) {
-            for(const run of findRuns(line)) {
-                const word = run.map(cell => cell.ch).join('');
-                candidates.push(word);
-            }
-        }
-        return candidates;
-    }
 
 draw();
