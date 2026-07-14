@@ -1,11 +1,5 @@
 package com.example.wordfall.controller;
 
-import org.springframework.core.io.ClasspathResource;
-import org.springfrmaework.web.bind.annotation.GetMapping;
-import org.springfrmaework.web.bind.annotation.RequestParam;
-import org.springfrmaework.web.bind.annotation.RestController;
-
-import javax.annotation.PostConstruct;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -13,22 +7,39 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.Set;
 
+import javax.annotation.PostConstruct;
+
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+// ↓ ここに@RestControllerを付ける(JSONを返すControllerだったことを思い出してください)
+@RestController
 public class WordController {
 
+    // 単語を保持しておく入れ物。検索が速いのでSetを使う
     private Set<String> words = new HashSet<>();
 
     // アプリ起動時に1回だけ呼ばれるメソッド。ここでwords.txtを読み込む
     @PostConstruct
     public void loadWords() throws IOException {
         ClassPathResource resource = new ClassPathResource("words.txt");
-        try(BuffereredReader reader = new BufferedReader(
-                new InputStreamReader(resource.getInputStream(),StandardCharsets.UTF_8))) {
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 words.add(line.trim().toUpperCase());
             }
-                }
-    
+        }
     }
-    
+
+    // ↓ ここにメソッドを書いてみてください
+    // GET /api/check-word?word=CAT のようにアクセスされたら、
+    // wordsセットにその単語(大文字にしたもの)が含まれているかをtrue/falseで返す
+    @GetMapping("/api/check-word")
+    public boolean returnWords(@RequestParam String word) {
+        return words.contains(word.toUpperCase());
+    }
+
 }
