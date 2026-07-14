@@ -37,6 +37,10 @@ const LETTER_POOL = (
     "Y".repeat(2) + "K" + "J" + "X" + "Q" + "Z"
 ).split('');
 
+function randomLetter () {
+    return LETTER_POOL[Math.floor(Math.random() * LETTER_POOL.length)];
+}
+
 // ミノを1つ作る。cells各マスに、それぞれ別のランダムな文字を割り当てる
 function makePiece(key) {
     const def = SHAPES[key];
