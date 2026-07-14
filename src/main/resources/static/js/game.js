@@ -28,10 +28,14 @@ function randomKey() {
     return KEYS[Math.floor(Math.random() * KEYS.length)];
 }
 
-function randomLetter() {
-    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    return letters[Math.floor(Math.random() * letters.length)];
-}
+const LETTER_POOL = (
+    "E".repeat(12) + "A".repeat(9) + "I".repeat(9) + "O".repeat(8) +
+    "N".repeat(7) +"R".repeat(7) + "T".repeat(7) + "S".repeat(6) +
+    "L".repeat(4) + "U".repeat(4) + "D".repeat(4) + "G".repeat(3) +
+    "C".repeat(3) + "M".repeat(3) + "H".repeat(3) + "B".repeat(2) +
+    "P".repeat(2) + "F".repeat(2) + "V".repeat(2) + "W".repeat(2) +
+    "Y".repeat(2) + "K" + "J" + "X" + "Q" + "Z"
+).split('');
 
 // ミノを1つ作る。cells各マスに、それぞれ別のランダムな文字を割り当てる
 function makePiece(key) {
