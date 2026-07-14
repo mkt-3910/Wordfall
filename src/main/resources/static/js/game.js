@@ -11,6 +11,7 @@ let grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
 
 let score = 0;
 let life = 3;
+let gameOver = false;
 
 // ミノの形(積み木崩しと同じ座標データ)
 const SHAPES = {
@@ -30,14 +31,14 @@ function randomKey() {
 
 const LETTER_POOL = (
     "E".repeat(12) + "A".repeat(9) + "I".repeat(9) + "O".repeat(8) +
-    "N".repeat(7) +"R".repeat(7) + "T".repeat(7) + "S".repeat(6) +
+    "N".repeat(7) + "R".repeat(7) + "T".repeat(7) + "S".repeat(6) +
     "L".repeat(4) + "U".repeat(4) + "D".repeat(4) + "G".repeat(3) +
     "C".repeat(3) + "M".repeat(3) + "H".repeat(3) + "B".repeat(2) +
     "P".repeat(2) + "F".repeat(2) + "V".repeat(2) + "W".repeat(2) +
     "Y".repeat(2) + "K" + "J" + "X" + "Q" + "Z"
 ).split('');
 
-function randomLetter () {
+function randomLetter() {
     return LETTER_POOL[Math.floor(Math.random() * LETTER_POOL.length)];
 }
 
@@ -208,6 +209,13 @@ async function lockPiece() {
     if (collides(current)) {
         life--;
         document.getElementById('life').textContent = life;
+
+        if (life <= 0) {
+            gameOver = true;
+            document.getElementById('gameOverMessage').style.display = 'block';
+            return;
+        }
+
         grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
     }
 
@@ -230,6 +238,7 @@ function tryRotate() {
 }
 
 async function softDrop() {
+    if (gameOver) return;
     if (!collides(current, 0, 1)) {
         current.y++;
     } else {
@@ -279,16 +288,18 @@ function drawLetter(col, row, letter) {
     ctx.fillText(letter, x + CELL / 2, y + CELL / 2);
 }
 
-// キー操作(1箇所にまとめる)
+// キー操作(ゲームオーバー中は無視する)
 window.addEventListener('keydown', async (e) => {
+    if (gameOver) return;
     if (e.key === 'ArrowLeft') { e.preventDefault(); moveHorizontal(-1); }
     if (e.key === 'ArrowRight') { e.preventDefault(); moveHorizontal(1); }
     if (e.key === 'ArrowDown') { e.preventDefault(); await softDrop(); }
     if (e.key === 'ArrowUp') { e.preventDefault(); tryRotate(); }
 });
 
-// 一定間隔で自動落下
+// 一定間隔で自動落下(ゲームオーバー中は止める)
 setInterval(async () => {
+    if (gameOver) return;
     await softDrop();
 }, 900);
 
