@@ -2,7 +2,7 @@
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
 
-const COLS = 9;
+const COLS = 12;
 const ROWS = 13;
 const CELL = 32;
 
@@ -282,6 +282,6 @@ window.addEventListener('keydown', async (e) => {
 // 一定間隔で自動落下
 setInterval(async () => {
     await softDrop();
-}, 700);
+}, 900);
 
 draw();
