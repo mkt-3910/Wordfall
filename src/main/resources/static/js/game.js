@@ -172,6 +172,14 @@ async function lockPiece() {
         if (gy >= 0) grid[gy][gx] = letter;
     }
 
+    applyGravity();//ミノを置いた直後浮いている文字を落とす
+
+    function simpliyDefnition(text) {
+        if(!text) return text;
+        const firstSentence = text.split('。')[0];
+        if(firstSentence.length <= 30) return firstSentence + (text.includes('。')? '。':'');
+        return firstSentence.slice(0,30)+'...';
+    }
     const candidates = collectCandidateRuns();
     const cellsToClear = new Set();
     const foundWords = [];
@@ -205,14 +213,16 @@ async function lockPiece() {
         applyGravity();
 
         // 3. 意味を取得して一覧に追加(単語ごとに)
-        for (const word of foundWords) {
+       for (const word of foundWords) {
             const meaningRes = await fetch(`/api/meaning?word=${word}`);
             const meaning = await meaningRes.json();
+
+            const shortDefinition = simplifyDefinition(meaning.definition);
 
             const wordLog = document.getElementById('wordLog');
             const entry = document.createElement('p');
             entry.className = 'wordlog-entry';
-            entry.textContent = `${meaning.word} (${meaning.partOfSpeech ?? '?'}) - ${meaning.definition}`;
+            entry.textContent = `${meaning.word} (${meaning.partOfSpeech ?? '?'}) - ${shortDefinition}`;
             wordLog.prepend(entry);
         }
     }
