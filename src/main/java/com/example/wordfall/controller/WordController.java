@@ -15,9 +15,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-// ↓ ここに@RestControllerを付ける(JSONを返すControllerだったことを思い出してください)
 @RestController
 public class WordController {
 
@@ -37,7 +37,6 @@ public class WordController {
         }
     }
 
-    // ↓ ここにメソッドを書いてみてください
     // GET /api/check-word?word=CAT のようにアクセスされたら、
     // wordsセットにその単語(大文字にしたもの)が含まれているかをtrue/falseで返す
     @GetMapping("/api/check-word")
@@ -45,28 +44,32 @@ public class WordController {
         return words.contains(word.toUpperCase());
     }
 
-    //外部の辞書APIを呼び出すための道具
+    // 外部の辞書APIを呼び出すための道具
     private final RestTemplate restTemplate = new RestTemplate();
 
-    //JSON文字列を解析するための道具
-    private final Object objectMapper = new ObjectMapper();
+    // JSON文字列を解析するための道具
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @GetMapping("/api/meaning")
     public MeaningResponse getMeaning(@RequestParam String word) {
-        try{
-            //1.外部の辞書APIを呼び出す
+        try {
+            // 1. 外部の辞書APIを呼び出す
             String url = "https://api.dictionaryapi.dev/api/v2/entries/en/" + word.toLowerCase();
-            String json = restTemplate.getForObject(url,String.class);
+            String json = restTemplate.getForObject(url, String.class);
 
-            // 2.JSON文字列を解析する
+            // 2. JSON文字列を解析する
             JsonNode root = objectMapper.readTree(json);
-            JsonNode firstEntry = firstEntry.get("meanings").get(0);
+            JsonNode firstEntry = root.get(0);
+            JsonNode firstMeaning = firstEntry.get("meanings").get(0);
             String partOfSpeech = firstMeaning.get("partOfSpeech").asText();
             String definition = firstMeaning.get("definitions").get(0).get("definition").asText();
 
-            //3.シンプルな形にして返す
-            return new MeaningResponse(word.toUpperCase(), partOfSpeech, definition)
+            // 3. シンプルな形にして返す
+            return new MeaningResponse(word.toUpperCase(), partOfSpeech, definition);
+
+        } catch (Exception e) {
+            // 辞書に載っていない・通信エラーなどがあった場合
+            return new MeaningResponse(word.toUpperCase(), null, "意味が見つかりませんでした");
         }
     }
-
 }
