@@ -11,7 +11,9 @@ let grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
 
 let score = 0;
 let life = 3;
+let wordCount = 0;
 let gameOver = false;
+let isProcessing = false; // lockPiece()が処理中かどうかのフラグ
 
 // ミノの形(積み木崩しと同じ座標データ)
 const SHAPES = {
@@ -76,21 +78,18 @@ function rotatePiece(piece) {
 function getAllLines() {
     const lines = [];
 
-    // 横方向:各行を1本のラインとする
     for (let r = 0; r < ROWS; r++) {
         const line = [];
         for (let c = 0; c < COLS; c++) line.push({ r, c });
         lines.push(line);
     }
 
-    // 縦方向:各列を1本のラインとする
     for (let c = 0; c < COLS; c++) {
         const line = [];
         for (let r = 0; r < ROWS; r++) line.push({ r, c });
         lines.push(line);
     }
 
-    // 斜め(右下がり ↘)
     for (let startCol = 0; startCol < COLS; startCol++) {
         const line = [];
         let r = 0, c = startCol;
@@ -104,7 +103,6 @@ function getAllLines() {
         lines.push(line);
     }
 
-    // 斜め(右上がり ↗)
     for (let startCol = 0; startCol < COLS; startCol++) {
         const line = [];
         let r = ROWS - 1, c = startCol;
@@ -166,45 +164,46 @@ function applyGravity() {
 }
 
 async function lockPiece() {
-    // ミノを盤面に固定する
     for (const [cx, cy, letter] of current.cells) {
         const gx = current.x + cx;
         const gy = current.y + cy;
         if (gy >= 0) grid[gy][gx] = letter;
     }
 
-    // 候補(文字列+座標)を集める
     const candidates = collectCandidateRuns();
-
-    // 消すマスを座標の重複なしで集めるための入れ物
     const cellsToClear = new Set();
 
-    // 候補を1つずつサーバーに問い合わせる(答えが来るまで待つ)
     for (const candidate of candidates) {
         const res = await fetch(`/api/check-word?word=${candidate.word}`);
         const isWord = await res.json();
 
         if (isWord) {
             score += candidate.word.length * 10;
+            wordCount++;
             for (const cell of candidate.cells) {
                 cellsToClear.add(`${cell.r},${cell.c}`);
             }
+
+            const meaningRes = await fetch(`/api/meaning?word=${candidate.word}`);
+            const meaning = await meaningRes.json();
+
+            const wordLog = document.getElementById('wordLog');
+            const entry = document.createElement('p');
+            entry.textContent = `${meaning.word} (${meaning.partOfSpeech ?? '?'}) - ${meaning.definition}`;
+            wordLog.prepend(entry);
         }
     }
 
-    // 実際にマスを消す
     for (const key of cellsToClear) {
         const [r, c] = key.split(',').map(Number);
         grid[r][c] = null;
     }
 
-    // 消えた分、各列で上のマスを下に詰める
     applyGravity();
 
-    // スコア表示を更新
     document.getElementById('score').textContent = score;
+    document.getElementById('wordCount').textContent = wordCount;
 
-    // 次のミノを出す
     current = makePiece(randomKey());
     if (collides(current)) {
         life--;
@@ -238,11 +237,13 @@ function tryRotate() {
 }
 
 async function softDrop() {
-    if (gameOver) return;
+    if (gameOver || isProcessing) return;
     if (!collides(current, 0, 1)) {
         current.y++;
     } else {
+        isProcessing = true;
         await lockPiece();
+        isProcessing = false;
     }
     draw();
 }
@@ -288,7 +289,6 @@ function drawLetter(col, row, letter) {
     ctx.fillText(letter, x + CELL / 2, y + CELL / 2);
 }
 
-// キー操作(ゲームオーバー中は無視する)
 window.addEventListener('keydown', async (e) => {
     if (gameOver) return;
     if (e.key === 'ArrowLeft') { e.preventDefault(); moveHorizontal(-1); }
@@ -297,7 +297,6 @@ window.addEventListener('keydown', async (e) => {
     if (e.key === 'ArrowUp') { e.preventDefault(); tryRotate(); }
 });
 
-// 一定間隔で自動落下(ゲームオーバー中は止める)
 setInterval(async () => {
     if (gameOver) return;
     await softDrop();
