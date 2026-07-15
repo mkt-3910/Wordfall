@@ -68,6 +68,7 @@ public class WordController {
             return new MeaningResponse(word.toUpperCase(), partOfSpeech, definition);
 
         } catch (Exception e) {
+            e.printStackTrace();//エラーの詳細をコンソールに出力する
             // 辞書に載っていない・通信エラーなどがあった場合
             return new MeaningResponse(word.toUpperCase(), null, "意味が見つかりませんでした");
         }
