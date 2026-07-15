@@ -211,7 +211,7 @@ async function lockPiece() {
 
         if (life <= 0) {
             gameOver = true;
-            document.getElementById('gameOverMessage').style.display = 'block';
+            document.getElementById('gameOverMessage').style.display = 'flex';
             return;
         }
 

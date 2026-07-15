@@ -55,32 +55,60 @@ public class WordController {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @GetMapping("/api/meaning")
-    public MeaningResponse getMeaning(@RequestParam String word) {
-        try {
-            //1.外部の辞書APIを呼び出す(User-Agentを付けて、ブラウザからのアクセスに見せる)
-            String url = "https://api.dictionaryapi.dev/api/v2/entries/en/" + word.toLowerCase();
+public MeaningResponse getMeaning(@RequestParam String word) {
+    try {
+        // 1. 外部の辞書APIを呼び出す(User-Agentを付けて、ブラウザからのアクセスに見せる)
+        String url = "https://api.dictionaryapi.dev/api/v2/entries/en/" + word.toLowerCase();
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
-            HttpEntity<String> entity = new HttpEntity<>(headers);
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+        HttpEntity<String> entity = new HttpEntity<>(headers);
 
-            ResponseEntity<String> response = restTemplate.exchange(url,HttpMethod.GET,entity,String.class);
-            String json = response.getBody();
+        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+        String json = response.getBody();
 
-            // 2. JSON文字列を解析する
-            JsonNode root = objectMapper.readTree(json);
-            JsonNode firstEntry = root.get(0);
-            JsonNode firstMeaning = firstEntry.get("meanings").get(0);
-            String partOfSpeech = firstMeaning.get("partOfSpeech").asText();
-            String definition = firstMeaning.get("definitions").get(0).get("definition").asText();
+        // 2. JSON文字列を解析する
+        JsonNode root = objectMapper.readTree(json);
+        JsonNode firstEntry = root.get(0);
+        JsonNode firstMeaning = firstEntry.get("meanings").get(0);
+        String partOfSpeech = firstMeaning.get("partOfSpeech").asText();
+        String definition = firstMeaning.get("definitions").get(0).get("definition").asText();
 
-            // 3. シンプルな形にして返す
-            return new MeaningResponse(word.toUpperCase(), partOfSpeech, definition);
+        // 3. 品詞と定義を日本語にする
+        String partOfSpeechJa = translatePartOfSpeech(partOfSpeech);
+        String definitionJa = translateToJapanese(definition);
 
-        } catch (Exception e) {
-            e.printStackTrace();//エラーの詳細をコンソールに出力する
-            // 辞書に載っていない・通信エラーなどがあった場合
-            return new MeaningResponse(word.toUpperCase(), null, "意味が見つかりませんでした");
-        }
+        // 4. シンプルな形にして返す
+        return new MeaningResponse(word.toUpperCase(), partOfSpeechJa, definitionJa);
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        return new MeaningResponse(word.toUpperCase(), null, "意味が見つかりませんでした");
     }
+}
+
+// 品詞を日本語に変換する(よく出るものだけ対応)
+private String translatePartOfSpeech(String pos) {
+    switch (pos) {
+        case "noun": return "名詞";
+        case "verb": return "動詞";
+        case "adjective": return "形容詞";
+        case "adverb": return "副詞";
+        case "pronoun": return "代名詞";
+        case "preposition": return "前置詞";
+        case "conjunction": return "接続詞";
+        case "interjection": return "感嘆詞";
+        default: return pos;
+    }
+}
+
+// 英語の文章を、無料の翻訳API(MyMemory)で日本語にする
+private String translateToJapanese(String text) throws Exception {
+    String encoded = java.net.URLEncoder.encode(text, "UTF-8");
+    String url = "https://api.mymemory.translated.net/get?q=" + encoded + "&langpair=en|ja";
+
+    String json = restTemplate.getForObject(url, String.class);
+    JsonNode root = objectMapper.readTree(json);
+    return root.get("responseData").get("translatedText").asText();
+}
 }
