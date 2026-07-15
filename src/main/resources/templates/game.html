@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http:///www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <title>言葉落とし</title>
@@ -9,22 +9,36 @@
 
 <body>
 
-<h1>言葉落とし</h1>
+<div class="stage">
+    <h1>言葉落とし</h1>
 
-<div class="status">
-    <span>スコア：<span id="score">0</span></span>
-    <span>ライフ：<span id="life">3</span></span>
-    <span>英単語：<span id="wordCount">0</span></span>
+    <div class="layout">
+        <div class="board-wrap">
+            <canvas id="board" width="384" height="416"></canvas>
+
+            <div id="gameOverMessage" class="overlay"></div>
+                <p>ゲームオーバー</p>
+        </div>
+    </div>
+
+    <div class="side">
+        <div class="panel">
+            <span class="label">スコア</span>
+            <span class="value" id="score">0</span>
+        </div>
+        <div class="panel">
+            <span class="label">英単語</span>
+            <span class="value" id="wordCount">0</span>
+        </div>
+
+        <div class="wordlog-panel">
+            <div class="wordlog-title">できた単語</div>
+            <div class="wordLog" class="wordlog-list"></div>
+        </div>
+    </div>
 </div>
-<div id="wordLog"></div>
-
-<div id="gameOverMessage" style="display:none;">
-    <p>ゲームオーバー</p>
-</div>
-
-<canvas id="board" width="384" height="416"></canvas>
 
 <script th:src="@{/js/game.js}"></script>
-
 </body>
+</head>
 </html>
