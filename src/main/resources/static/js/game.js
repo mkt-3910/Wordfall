@@ -13,7 +13,7 @@ let score = 0;
 let life = 3;
 let wordCount = 0;
 let gameOver = false;
-let isProcessing = false; // lockPiece()が処理中かどうかのフラグ
+let isProcessing = false;
 
 // ミノの形(積み木崩しと同じ座標データ)
 const SHAPES = {
@@ -44,7 +44,7 @@ function randomLetter() {
     return LETTER_POOL[Math.floor(Math.random() * LETTER_POOL.length)];
 }
 
-// ミノを1つ作る。cells各マスに、それぞれ別のランダムな文字を割り当てる
+// ミノを1つ作る
 function makePiece(key) {
     const def = SHAPES[key];
     return {
@@ -57,6 +57,9 @@ function makePiece(key) {
 }
 
 let current = makePiece(randomKey());
+
+// 見た目上の落下位置(滑らかに動かすための値。current.yに向かって少しずつ近づく)
+let visualY = current.y;
 
 function collides(piece, offX = 0, offY = 0, cells = piece.cells) {
     for (const [cx, cy] of cells) {
@@ -83,13 +86,11 @@ function getAllLines() {
         for (let c = 0; c < COLS; c++) line.push({ r, c });
         lines.push(line);
     }
-
     for (let c = 0; c < COLS; c++) {
         const line = [];
         for (let r = 0; r < ROWS; r++) line.push({ r, c });
         lines.push(line);
     }
-
     for (let startCol = 0; startCol < COLS; startCol++) {
         const line = [];
         let r = 0, c = startCol;
@@ -102,7 +103,6 @@ function getAllLines() {
         while (r < ROWS && c < COLS) { line.push({ r, c }); r++; c++; }
         lines.push(line);
     }
-
     for (let startCol = 0; startCol < COLS; startCol++) {
         const line = [];
         let r = ROWS - 1, c = startCol;
@@ -119,7 +119,6 @@ function getAllLines() {
     return lines;
 }
 
-// 1本のライン(マスの配列)の中から、文字が3つ以上連続している部分を取り出す
 function findRuns(line) {
     const runs = [];
     let cur = [];
@@ -135,7 +134,6 @@ function findRuns(line) {
     return runs;
 }
 
-// 盤面全体から「単語判定の候補」(文字列+座標)を集める
 function collectCandidateRuns() {
     const lines = getAllLines();
     const candidates = [];
@@ -148,7 +146,6 @@ function collectCandidateRuns() {
     return candidates;
 }
 
-// 各列ごとに、消えたマスの分だけ上のマスを下に詰める(重力)
 function applyGravity() {
     for (let c = 0; c < COLS; c++) {
         let writeRow = ROWS - 1;
@@ -163,6 +160,11 @@ function applyGravity() {
     }
 }
 
+// 一定時間だけ待つためのヘルパー
+function wait(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 async function lockPiece() {
     for (const [cx, cy, letter] of current.cells) {
         const gx = current.x + cx;
@@ -172,6 +174,7 @@ async function lockPiece() {
 
     const candidates = collectCandidateRuns();
     const cellsToClear = new Set();
+    const foundWords = [];
 
     for (const candidate of candidates) {
         const res = await fetch(`/api/check-word?word=${candidate.word}`);
@@ -183,35 +186,51 @@ async function lockPiece() {
             for (const cell of candidate.cells) {
                 cellsToClear.add(`${cell.r},${cell.c}`);
             }
+            foundWords.push(candidate.word);
+        }
+    }
 
-            const meaningRes = await fetch(`/api/meaning?word=${candidate.word}`);
+    if (cellsToClear.size > 0) {
+        // 1. 消える前に、一瞬光らせる演出
+        flashCells = cellsToClear;
+        draw();
+        await wait(220);
+        flashCells = null;
+
+        // 2. 実際にマスを消す
+        for (const key of cellsToClear) {
+            const [r, c] = key.split(',').map(Number);
+            grid[r][c] = null;
+        }
+        applyGravity();
+
+        // 3. 意味を取得して一覧に追加(単語ごとに)
+        for (const word of foundWords) {
+            const meaningRes = await fetch(`/api/meaning?word=${word}`);
             const meaning = await meaningRes.json();
 
             const wordLog = document.getElementById('wordLog');
             const entry = document.createElement('p');
+            entry.className = 'wordlog-entry';
             entry.textContent = `${meaning.word} (${meaning.partOfSpeech ?? '?'}) - ${meaning.definition}`;
             wordLog.prepend(entry);
         }
     }
 
-    for (const key of cellsToClear) {
-        const [r, c] = key.split(',').map(Number);
-        grid[r][c] = null;
-    }
-
-    applyGravity();
-
     document.getElementById('score').textContent = score;
     document.getElementById('wordCount').textContent = wordCount;
 
     current = makePiece(randomKey());
+    visualY = current.y;
+
     if (collides(current)) {
         life--;
         document.getElementById('life').textContent = life;
 
         if (life <= 0) {
             gameOver = true;
-            document.getElementById('gameOverMessage').style.display = 'flex';
+            const overlay = document.getElementById('gameOverMessage');
+            overlay.classList.add('show');
             return;
         }
 
@@ -224,7 +243,6 @@ async function lockPiece() {
 function moveHorizontal(dir) {
     if (!collides(current, dir, 0)) {
         current.x += dir;
-        draw();
     }
 }
 
@@ -232,7 +250,6 @@ function tryRotate() {
     const rotated = rotatePiece(current);
     if (!collides(current, 0, 0, rotated.cells)) {
         current.cells = rotated.cells;
-        draw();
     }
 }
 
@@ -245,8 +262,10 @@ async function softDrop() {
         await lockPiece();
         isProcessing = false;
     }
-    draw();
 }
+
+// 消える演出中に光らせるマスの集合("行,列"の文字列)
+let flashCells = null;
 
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -265,22 +284,27 @@ function draw() {
         ctx.stroke();
     }
 
+    // 積まれた文字
     for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
-            if (grid[r][c]) drawLetter(c, r, grid[r][c]);
+            if (grid[r][c]) {
+                const isFlashing = flashCells && flashCells.has(`${r},${c}`);
+                drawLetter(c, r, grid[r][c], isFlashing);
+            }
         }
     }
 
+    // 落下中のミノ(見た目の位置はvisualYを使う)
     for (const [cx, cy, letter] of current.cells) {
-        const gy = current.y + cy;
-        if (gy >= 0) drawLetter(current.x + cx, gy, letter);
+        const gy = visualY + cy;
+        if (gy >= -1) drawLetter(current.x + cx, gy, letter, false);
     }
 }
 
-function drawLetter(col, row, letter) {
+function drawLetter(col, row, letter, flashing) {
     const x = col * CELL;
     const y = row * CELL;
-    ctx.fillStyle = "#d9c9a3";
+    ctx.fillStyle = flashing ? "#f4ecd8" : "#d9c9a3";
     ctx.fillRect(x + 2, y + 2, CELL - 4, CELL - 4);
     ctx.fillStyle = "#2b3a55";
     ctx.font = "bold 18px sans-serif";
@@ -289,6 +313,7 @@ function drawLetter(col, row, letter) {
     ctx.fillText(letter, x + CELL / 2, y + CELL / 2);
 }
 
+// キー操作
 window.addEventListener('keydown', async (e) => {
     if (gameOver) return;
     if (e.key === 'ArrowLeft') { e.preventDefault(); moveHorizontal(-1); }
@@ -297,9 +322,21 @@ window.addEventListener('keydown', async (e) => {
     if (e.key === 'ArrowUp') { e.preventDefault(); tryRotate(); }
 });
 
+// 一定間隔で自動落下(ロジック側のタイミング)
 setInterval(async () => {
     if (gameOver) return;
     await softDrop();
 }, 900);
 
-draw();
+// 見た目を滑らかに動かし続けるための描画ループ(毎フレーム実行される)
+function animationLoop() {
+    // visualYを、本当の位置(current.y)に少しずつ近づける
+    const diff = current.y - visualY;
+    visualY += diff * 0.25;
+    if (Math.abs(diff) < 0.01) visualY = current.y;
+
+    draw();
+    requestAnimationFrame(animationLoop);
+}
+
+animationLoop();
