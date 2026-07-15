@@ -9,6 +9,10 @@ import java.util.Set;
 
 import javax.annotation.PostConstruct;
 
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -53,9 +57,15 @@ public class WordController {
     @GetMapping("/api/meaning")
     public MeaningResponse getMeaning(@RequestParam String word) {
         try {
-            // 1. 外部の辞書APIを呼び出す
+            //1.外部の辞書APIを呼び出す(User-Agentを付けて、ブラウザからのアクセスに見せる)
             String url = "https://api.dictionaryapi.dev/api/v2/entries/en/" + word.toLowerCase();
-            String json = restTemplate.getForObject(url, String.class);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<String> response = restTemplate.exchange(url,HttpMethod.GET,entity,String.class);
+            String json = response.getBody();
 
             // 2. JSON文字列を解析する
             JsonNode root = objectMapper.readTree(json);
