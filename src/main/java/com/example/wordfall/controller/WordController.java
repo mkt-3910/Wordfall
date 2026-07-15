@@ -9,11 +9,11 @@ import java.util.Set;
 
 import javax.annotation.PostConstruct;
 
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -55,60 +55,69 @@ public class WordController {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @GetMapping("/api/meaning")
-public MeaningResponse getMeaning(@RequestParam String word) {
-    try {
-        // 1. 外部の辞書APIを呼び出す(User-Agentを付けて、ブラウザからのアクセスに見せる)
-        String url = "https://api.dictionaryapi.dev/api/v2/entries/en/" + word.toLowerCase();
+    public MeaningResponse getMeaning(@RequestParam String word) {
+        try {
+            // 1. 外部の辞書APIを呼び出す(品詞だけを知りたい)
+            String url = "https://api.dictionaryapi.dev/api/v2/entries/en/" + word.toLowerCase();
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
-        HttpEntity<String> entity = new HttpEntity<>(headers);
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+            HttpEntity<String> entity = new HttpEntity<>(headers);
 
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-        String json = response.getBody();
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            String json = response.getBody();
 
-        // 2. JSON文字列を解析する
-        JsonNode root = objectMapper.readTree(json);
-        JsonNode firstEntry = root.get(0);
-        JsonNode firstMeaning = firstEntry.get("meanings").get(0);
-        String partOfSpeech = firstMeaning.get("partOfSpeech").asText();
-        String definition = firstMeaning.get("definitions").get(0).get("definition").asText();
+            JsonNode root = objectMapper.readTree(json);
+            JsonNode firstEntry = root.get(0);
+            JsonNode firstMeaning = firstEntry.get("meanings").get(0);
+            String partOfSpeech = firstMeaning.get("partOfSpeech").asText();
 
-        // 3. 品詞と定義を日本語にする
-        String partOfSpeechJa = translatePartOfSpeech(partOfSpeech);
-        String definitionJa = translateToJapanese(definition);
+            // 2. 品詞を日本語にする
+            String partOfSpeechJa = translatePartOfSpeech(partOfSpeech);
 
-        // 4. シンプルな形にして返す
-        return new MeaningResponse(word.toUpperCase(), partOfSpeechJa, definitionJa);
+            // 3. 単語そのものを日本語に翻訳する(長い説明文ではなく、単語だけを翻訳することでシンプルにする)
+            String meaningJa = translateToJapanese(word.toLowerCase());
 
-    } catch (Exception e) {
-        e.printStackTrace();
-        return new MeaningResponse(word.toUpperCase(), null, "意味が見つかりませんでした");
+            // 4. シンプルな形にして返す
+            return new MeaningResponse(word.toUpperCase(), partOfSpeechJa, meaningJa);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new MeaningResponse(word.toUpperCase(), null, "意味が見つかりませんでした");
+        }
     }
-}
 
 // 品詞を日本語に変換する(よく出るものだけ対応)
-private String translatePartOfSpeech(String pos) {
-    switch (pos) {
-        case "noun": return "名詞";
-        case "verb": return "動詞";
-        case "adjective": return "形容詞";
-        case "adverb": return "副詞";
-        case "pronoun": return "代名詞";
-        case "preposition": return "前置詞";
-        case "conjunction": return "接続詞";
-        case "interjection": return "感嘆詞";
-        default: return pos;
+    private String translatePartOfSpeech(String pos) {
+        switch (pos) {
+            case "noun":
+                return "名詞";
+            case "verb":
+                return "動詞";
+            case "adjective":
+                return "形容詞";
+            case "adverb":
+                return "副詞";
+            case "pronoun":
+                return "代名詞";
+            case "preposition":
+                return "前置詞";
+            case "conjunction":
+                return "接続詞";
+            case "interjection":
+                return "感嘆詞";
+            default:
+                return pos;
+        }
     }
-}
 
 // 英語の文章を、無料の翻訳API(MyMemory)で日本語にする
-private String translateToJapanese(String text) throws Exception {
-    String encoded = java.net.URLEncoder.encode(text, "UTF-8");
-    String url = "https://api.mymemory.translated.net/get?q=" + encoded + "&langpair=en|ja";
+    private String translateToJapanese(String text) throws Exception {
+        String encoded = java.net.URLEncoder.encode(text, "UTF-8");
+        String url = "https://api.mymemory.translated.net/get?q=" + encoded + "&langpair=en|ja";
 
-    String json = restTemplate.getForObject(url, String.class);
-    JsonNode root = objectMapper.readTree(json);
-    return root.get("responseData").get("translatedText").asText();
-}
+        String json = restTemplate.getForObject(url, String.class);
+        JsonNode root = objectMapper.readTree(json);
+        return root.get("responseData").get("translatedText").asText();
+    }
 }

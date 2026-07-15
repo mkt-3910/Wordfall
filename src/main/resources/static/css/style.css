@@ -144,3 +144,28 @@ h1 {
     font-size: 20px;
     font-weight: bold;
 }
+
+/* 単語完成時の演出 */
+.clear-effect {
+    animation: clearAnimation 0.4s ease-out;
+}
+
+@keyframes clearAnimation {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+        filter: brightness(1);
+    }
+
+    50% {
+        transform: scale(1.2);
+        opacity: 1;
+        filter: brightness(2);
+    }
+
+    100% {
+        transform: scale(0.8);
+        opacity: 0;
+        filter: brightness(3);
+    }
+}
