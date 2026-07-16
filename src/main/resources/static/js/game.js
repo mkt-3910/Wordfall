@@ -14,9 +14,8 @@ let life = 3;
 let wordCount = 0;
 let gameOver = false;
 let isProcessing = false;
-let gameStarted = false; // タイトル画面でスタートを押すまでは動かさない
+let gameStarted = false;
 
-// これまでに完成した単語を全部記録しておく(ハイスコア保存用)
 let allFoundWords = [];
 
 // ミノの形(積み木崩しと同じ座標データ)
@@ -146,18 +145,25 @@ function collectCandidateRuns() {
     return candidates;
 }
 
+// 各列ごとに、隙間を詰めて下に落とす。
+// 「どのマスが、どこからどこへ動いたか」をmovesとして記録して返す(アニメーション用)
 function applyGravity() {
+    const moves = [];
     for (let c = 0; c < COLS; c++) {
         let writeRow = ROWS - 1;
         for (let r = ROWS - 1; r >= 0; r--) {
             if (grid[r][c] !== null) {
-                grid[writeRow][c] = grid[r][c];
-                if (writeRow !== r) grid[r][c] = null;
+                if (writeRow !== r) {
+                    moves.push({ col: c, fromRow: r, toRow: writeRow, ch: grid[r][c] });
+                    grid[writeRow][c] = grid[r][c];
+                    grid[r][c] = null;
+                }
                 writeRow--;
             }
         }
         for (let r = writeRow; r >= 0; r--) grid[r][c] = null;
     }
+    return moves;
 }
 
 function simplifyDefinition(text) {
@@ -171,7 +177,21 @@ function wait(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// 単語完成トーストを表示する
+// 落下アニメーションの状態(drawが参照する)
+let gravityMoves = null;
+let gravityStartTime = 0;
+const GRAVITY_DURATION = 200; // ミリ秒
+
+// 重力による移動を、時間をかけて滑らかに見せる
+async function animateGravity(moves) {
+    if (moves.length === 0) return;
+    gravityMoves = moves;
+    gravityStartTime = performance.now();
+    await wait(GRAVITY_DURATION);
+    gravityMoves = null;
+}
+
+// 単語完成トースト
 let toastTimer = null;
 function showWordToast(word, points) {
     const toast = document.getElementById('wordToast');
@@ -184,9 +204,9 @@ function showWordToast(word, points) {
 }
 
 // 消えるマスの情報(縮小+フェードアニメーション用)
-let clearingCells = null; // Map: "行,列" -> 文字
+let clearingCells = null;
 let clearStartTime = 0;
-const CLEAR_DURATION = 350; // ミリ秒
+const CLEAR_DURATION = 350;
 
 async function lockPiece() {
     for (const [cx, cy, letter] of current.cells) {
@@ -195,7 +215,9 @@ async function lockPiece() {
         if (gy >= 0) grid[gy][gx] = letter;
     }
 
-    applyGravity();
+    // ミノを置いた直後、浮いている文字を滑らかに落とす
+    const firstMoves = applyGravity();
+    await animateGravity(firstMoves);
 
     const candidates = collectCandidateRuns();
     const cellsToClear = new Set();
@@ -214,12 +236,11 @@ async function lockPiece() {
                 cellsToClear.add(`${cell.r},${cell.c}`);
             }
             foundWords.push(candidate.word);
-            showWordToast(candidate.word, points); // すぐにトースト表示
+            showWordToast(candidate.word, points);
         }
     }
 
     if (cellsToClear.size > 0) {
-        // 1. 消えるマスを記録して、アニメーション開始(draw()側で縮小+フェードを描画する)
         clearingCells = new Map();
         for (const key of cellsToClear) {
             const [r, c] = key.split(',').map(Number);
@@ -229,14 +250,15 @@ async function lockPiece() {
         await wait(CLEAR_DURATION);
         clearingCells = null;
 
-        // 2. 実際にマスを消す
         for (const key of cellsToClear) {
             const [r, c] = key.split(',').map(Number);
             grid[r][c] = null;
         }
-        applyGravity();
 
-        // 3. 意味を取得して一覧に追加
+        // 消えたあと、その上にあった文字も滑らかに落とす
+        const secondMoves = applyGravity();
+        await animateGravity(secondMoves);
+
         for (const word of foundWords) {
             const meaningRes = await fetch(`/api/meaning?word=${word}`);
             const meaning = await meaningRes.json();
@@ -273,7 +295,6 @@ async function lockPiece() {
     }
 }
 
-// ハイスコアと比較して、更新されていればサーバーに保存する
 async function checkAndSaveHighScore() {
     try {
         const res = await fetch('/api/score/high');
@@ -298,7 +319,6 @@ async function checkAndSaveHighScore() {
     }
 }
 
-// タイトル画面に、これまでのハイスコアを表示しておく
 async function loadTitleHighScore() {
     try {
         const res = await fetch('/api/score/high');
@@ -333,6 +353,11 @@ async function softDrop() {
     }
 }
 
+// 進行度(0〜1)を、減速しながら止まる曲線に変換する(ease-out)
+function easeOut(t) {
+    return 1 - Math.pow(1 - t, 3);
+}
+
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -350,14 +375,28 @@ function draw() {
         ctx.stroke();
     }
 
-    // 積まれた文字(消えるアニメーション中のマスは、ここでは描かず後で別に描く)
+    // 今、落下アニメーション中のマス(行列で引けるようにSetにしておく)
+    const fallingKeys = gravityMoves ? new Set(gravityMoves.map(m => `${m.toRow},${m.col}`)) : null;
+
+    // 積まれた文字(落下アニメーション中のマスは、ここではスキップする)
     for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
             if (grid[r][c]) {
                 const key = `${r},${c}`;
                 if (clearingCells && clearingCells.has(key)) continue;
+                if (fallingKeys && fallingKeys.has(key)) continue;
                 drawLetter(c, r, grid[r][c]);
             }
+        }
+    }
+
+    // 落下アニメーション中のマスを、途中の位置で描く
+    if (gravityMoves) {
+        const rawProgress = Math.min(1, (performance.now() - gravityStartTime) / GRAVITY_DURATION);
+        const progress = easeOut(rawProgress);
+        for (const m of gravityMoves) {
+            const rowNow = m.fromRow + (m.toRow - m.fromRow) * progress;
+            drawLetter(m.col, rowNow, m.ch);
         }
     }
 
@@ -389,10 +428,9 @@ function drawLetter(col, row, letter) {
     ctx.fillText(letter, x + CELL / 2, y + CELL / 2);
 }
 
-// 消えていく途中のマスを、縮小+フェードしながら描く
 function drawClearingLetter(col, row, letter, progress) {
-    const scale = 1 - progress * 0.6; // だんだん小さくなる
-    const alpha = 1 - progress; // だんだん透明になる
+    const scale = 1 - progress * 0.6;
+    const alpha = 1 - progress;
     const cx = col * CELL + CELL / 2;
     const cy = row * CELL + CELL / 2;
 
@@ -412,7 +450,6 @@ function drawClearingLetter(col, row, letter, progress) {
     ctx.restore();
 }
 
-// キー操作
 window.addEventListener('keydown', async (e) => {
     if (!gameStarted || gameOver) return;
     if (e.key === 'ArrowLeft') { e.preventDefault(); moveHorizontal(-1); }
@@ -436,17 +473,14 @@ function animationLoop() {
 }
 animationLoop();
 
-// タイトル画面のスタートボタン
 document.getElementById('startBtn').addEventListener('click', () => {
     document.getElementById('titleScreen').style.display = 'none';
     document.getElementById('gameStage').style.display = 'block';
     gameStarted = true;
 });
 
-// ゲームオーバー画面の「タイトルに戻る」ボタン:ページを再読み込みして全部リセットする
 document.getElementById('backToTitleBtn').addEventListener('click', () => {
     location.reload();
 });
 
-// 起動時に、タイトル画面のハイスコアを取得しておく
 loadTitleHighScore();
