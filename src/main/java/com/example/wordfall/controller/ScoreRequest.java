@@ -9,7 +9,6 @@ public class ScoreRequest {
     private String words;
 
     public ScoreRequest() {
-
     }
 
     public int getScore() {
@@ -18,6 +17,14 @@ public class ScoreRequest {
 
     public void setScore(int score) {
         this.score = score;
+    }
+
+    public int getWordCount() {
+        return wordCount;
+    }
+
+    public void setWordCount(int wordCount) {
+        this.wordCount = wordCount;
     }
 
     public String getWords() {
