@@ -15,6 +15,7 @@ let wordCount = 0;
 let gameOver = false;
 let isProcessing = false;
 let gameStarted = false;
+let showCurrentPiece = true;
 
 let allFoundWords = [];
 
@@ -133,16 +134,53 @@ function findRuns(line) {
     return runs;
 }
 
-function collectCandidateRuns() {
-    const lines = getAllLines();
+// 1本の連続した文字列(run)の中から、辞書に載っている単語の部分だけを探す
+async function findWordMatchesInRun(run) {
+    const s = run.map(cell => cell.ch).join('');
+    const n = s.length;
     const candidates = [];
-    for (const line of lines) {
-        for (const run of findRuns(line)) {
-            const word = run.map(cell => cell.ch).join('');
-            candidates.push({ word, cells: run });
+
+    // あり得る全ての部分文字列(3文字以上)を作り、1つずつサーバーに確認する
+    for (let start = 0; start < n; start++) {
+        for (let end = start + 3; end <= n; end++) {
+            const sub = s.slice(start, end);
+            const res = await fetch(`/api/check-word?word=${sub}`);
+            const isWord = await res.json();
+            if (isWord) {
+                candidates.push({ start, end, len: end - start, word: sub });
+            }
         }
     }
-    return candidates;
+
+    // 長い一致を優先しつつ、マスが被らないように選ぶ
+    candidates.sort((a, b) => b.len - a.len);
+    const used = new Array(n).fill(false);
+    const accepted = [];
+    for (const c of candidates) {
+        let overlap = false;
+        for (let i = c.start; i < c.end; i++) if (used[i]) { overlap = true; break; }
+        if (overlap) continue;
+        for (let i = c.start; i < c.end; i++) used[i] = true;
+        accepted.push(c);
+    }
+
+    return accepted.map(c => ({
+        word: c.word,
+        cells: run.slice(c.start, c.end),
+    }));
+}
+
+// 盤面全体から、実際に完成している単語(部分文字列マッチ込み)を集める
+async function collectCandidateRuns() {
+    const lines = getAllLines();
+    const allMatches = [];
+    for (const line of lines) {
+        for (const run of findRuns(line)) {
+            const matches = await findWordMatchesInRun(run);
+            allMatches.push(...matches);
+        }
+    }
+    return allMatches;
 }
 
 // 各列ごとに、隙間を詰めて下に落とす。
@@ -215,29 +253,26 @@ async function lockPiece() {
         if (gy >= 0) grid[gy][gx] = letter;
     }
 
+    showCurrentPiece = false; // 固定した瞬間、操作中ミノの描画を止める
+
     // ミノを置いた直後、浮いている文字を滑らかに落とす
     const firstMoves = applyGravity();
     await animateGravity(firstMoves);
 
-    const candidates = collectCandidateRuns();
+    const candidates = await collectCandidateRuns();
     const cellsToClear = new Set();
     const foundWords = [];
 
     for (const candidate of candidates) {
-        const res = await fetch(`/api/check-word?word=${candidate.word}`);
-        const isWord = await res.json();
-
-        if (isWord) {
-            const points = candidate.word.length * 10;
-            score += points;
-            wordCount++;
-            allFoundWords.push(candidate.word);
-            for (const cell of candidate.cells) {
-                cellsToClear.add(`${cell.r},${cell.c}`);
-            }
-            foundWords.push(candidate.word);
-            showWordToast(candidate.word, points);
+        const points = candidate.word.length * 10;
+        score += points;
+        wordCount++;
+        allFoundWords.push(candidate.word);
+        for (const cell of candidate.cells) {
+            cellsToClear.add(`${cell.r},${cell.c}`);
         }
+        foundWords.push(candidate.word);
+        showWordToast(candidate.word, points);
     }
 
     if (cellsToClear.size > 0) {
@@ -278,6 +313,7 @@ async function lockPiece() {
 
     current = makePiece(randomKey());
     visualY = current.y;
+    showCurrentPiece = true;
 
     if (collides(current)) {
         life--;
@@ -409,10 +445,12 @@ function draw() {
         }
     }
 
-    // 落下中のミノ
-    for (const [cx, cy, letter] of current.cells) {
-        const gy = visualY + cy;
-        if (gy >= -1) drawLetter(current.x + cx, gy, letter);
+    // 落下中のミノ(固定済みで、まだ新しいミノに差し替わっていない間は描かない)
+    if (showCurrentPiece) {
+        for (const [cx, cy, letter] of current.cells) {
+            const gy = visualY + cy;
+            if (gy >= -1) drawLetter(current.x + cx, gy, letter);
+        }
     }
 }
 
