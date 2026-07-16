@@ -3,21 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <title>言葉落とし</title>
-
     <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
-
 <body>
 
-<div class="stage">
+<div id="titleScreen" class="title-screen">
+    <div class="title-card">
+        <h1>言葉落とし</h1>
+        <p class="title-desc">ミノを操作して、縦・横・斜めに英単語を完成させよう</p>
+        <div class="title-highscore">ハイスコア：<span id="titleHighScore">-</span></div>
+        <button id="startBtn" class="primary-btn">スタート</button>
+    </div>
+</div>
+
+<div class="stage" id="gameStage" style="display:none;">
     <h1>言葉落とし</h1>
 
     <div class="layout">
         <div class="board-wrap">
             <canvas id="board" width="384" height="416"></canvas>
 
+            <div id="wordToast" class="word-toast"></div>
+
             <div id="gameOverMessage" class="overlay">
-                <p>ゲームオーバー</p>
+                <p class="overlay-title">ゲームオーバー</p>
+                <p id="finalScoreText" class="overlay-sub"></p>
+                <p id="highScoreText" class="overlay-sub"></p>
+                <button id="backToTitleBtn" class="primary-btn">タイトルに戻る</button>
             </div>
         </div>
 
@@ -43,8 +55,6 @@
     </div>
 </div>
 
-
 <script th:src="@{/js/game.js}"></script>
-
 </body>
 </html>
