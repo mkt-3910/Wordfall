@@ -179,3 +179,42 @@ public class WordController {
         }
         return null;
     }
+
+    // 翻訳元2:MyMemory(無料翻訳API)
+    private String translateViaMyMemory(String word) {
+        try {
+            String encoded = java.net.URLEncoder.encode(word, "UTF-8");
+            String url = "https://api.mymemory.translated.net/get?q=" + encoded + "&langpair=en|ja";
+
+            String json = restTemplate.getForObject(url, String.class);
+            JsonNode root = objectMapper.readTree(json);
+            String translated = root.get("responseData").get("translatedText").asText();
+
+            if (translated == null || translated.toUpperCase().contains("MYMEMORY WARNING")) {
+                return null;
+            }
+            return translated;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    // 翻訳元3:Google翻訳(非公式の無料エンドポイント。キー不要だが、あくまで補助的に使う)
+    private String translateViaGoogle(String word) {
+        try {
+            String encoded = java.net.URLEncoder.encode(word, "UTF-8");
+            String url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ja&dt=t&q=" + encoded;
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+
+            JsonNode root = objectMapper.readTree(response.getBody());
+            return root.get(0).get(0).get(0).asText();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+}
