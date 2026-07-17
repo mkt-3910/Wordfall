@@ -1,4 +1,27 @@
-<div class="board-wrap">
+```html
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>言葉落とし</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+<div id="titleScreen" class="title-screen">
+    <div class="title-card">
+        <h1>言葉落とし</h1>
+        <p class="title-desc">ミノを操作して、縦・横・斜めに英単語を完成させよう</p>
+        <div class="title-highscore">ハイスコア：<span id="titleHighScore">-</span></div>
+        <button id="startBtn" class="primary-btn">スタート</button>
+    </div>
+</div>
+
+<div class="stage" id="gameStage" style="display:none;">
+    <h1>言葉落とし</h1>
+
+    <div class="layout">
+       <div class="board-wrap">
             <canvas id="board" width="384" height="416"></canvas>
 
             <div id="wordToast" class="word-toast"></div>
@@ -16,3 +39,30 @@
                 <button id="pauseBackToTitleBtn" class="primary-btn">タイトルに戻る</button>
             </div>
         </div>
+
+        <div class="side">
+            <div class="panel">
+                <span class="label">スコア</span>
+                <span class="value" id="score">0</span>
+            </div>
+            <div class="panel">
+                <span class="label">ライフ</span>
+                <span class="value" id="life">3</span>
+            </div>
+            <div class="panel">
+                <span class="label">英単語</span>
+                <span class="value" id="wordCount">0</span>
+            </div>
+
+            <div class="wordlog-panel">
+                <div class="wordlog-title">できた単語</div>
+                <div id="wordLog" class="wordlog-list"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script th:src="@{/js/game.js}"></script>
+</body>
+</html>
+```
