@@ -16,6 +16,7 @@ let gameOver = false;
 let isProcessing = false;
 let gameStarted = false;
 let showCurrentPiece = true;
+let paused = false;
 
 let allFoundWords = [];
 
@@ -379,7 +380,7 @@ function tryRotate() {
 }
 
 async function softDrop() {
-    if (!gameStarted || gameOver || isProcessing) return;
+    if (!gameStarted || gameOver || isProcessing || paused) return;
     if (!collides(current, 0, 1)) {
         current.y++;
     } else {
@@ -490,14 +491,24 @@ function drawClearingLetter(col, row, letter, progress) {
 
 window.addEventListener('keydown', async (e) => {
     if (!gameStarted || gameOver) return;
-    if (e.key === 'ArrowLeft') { e.preventDefault(); moveHorizontal(-1); }
-    if (e.key === 'ArrowRight') { e.preventDefault(); moveHorizontal(1); }
-    if (e.key === 'ArrowDown') { e.preventDefault(); await softDrop(); }
-    if (e.key === 'ArrowUp') { e.preventDefault(); tryRotate(); }
+   
+    //Pキー or Escapeキーで、一時停止のオン・オフを切り替える(ポーズ中でも受け付ける)
+    if(e.key === 'p' || e.key === 'P' || e.key === 'Escape') {
+        e.preventDefault();
+        togglePause();
+        return;
+    }
+
+    if(paused) return; // ポーズ中は、これ以降の操作を受け付けない
+
+    if(e.key === 'ArrowLeft') {e.preventDefault(); moveHorizontal(-1);}
+    if(e.key === 'ArrowRight') {e.preventDefault(); moveHorizontal(1);}
+    if(e.key === 'ArrowDown') {e.preventDefault(); await softDrop();}
+    if(e.key === 'ArrowUp') {e.preventDefault(); tryRotate();}
 });
 
 setInterval(async () => {
-    if (!gameStarted || gameOver) return;
+    if (!gameStarted || gameOver || paused) return;
     await softDrop();
 }, 900);
 
@@ -522,3 +533,15 @@ document.getElementById('backToTitleBtn').addEventListener('click', () => {
 });
 
 loadTitleHighScore();
+
+// 一時停止のオン/オフを切り替える
+// 一時停止のオン/オフを切り替える
+function togglePause() {
+    if (gameOver) return;
+    paused = !paused;
+    document.getElementById('pauseMessage').classList.toggle('show', paused);
+}
+
+document.getElementById('pauseBtn').addEventListener('click', () => togglePause());
+document.getElementById('resumeBtn').addEventListener('click', () => togglePause());
+document.getElementById('pauseBackToTitleBtn').addEventListener('click', () => location.reload());
