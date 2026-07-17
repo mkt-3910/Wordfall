@@ -56,39 +56,38 @@ public class WordController {
 
     @GetMapping("/api/meaning")
     public MeaningResponse getMeaning(@RequestParam String word) {
+        String lowerWord = word.toLowerCase();
+
+        // 品詞取得と翻訳は、それぞれ独立して試す(片方が失敗しても、もう片方は諦めない)
+        String partOfSpeechJa = translatePartOfSpeech(fetchPartOfSpeech(lowerWord));
+        String meaningJa = translateWord(lowerWord);
+
+        return new MeaningResponse(word.toUpperCase(), partOfSpeechJa, meaningJa);
+    }
+
+    // 辞書API(dictionaryapi.dev)から品詞だけを取り出す。失敗したらnullを返す(例外は投げない)
+    private String fetchPartOfSpeech(String word) {
         try {
-            // 1. 外部の辞書APIを呼び出す(品詞だけを知りたい)
-            String url = "https://api.dictionaryapi.dev/api/v2/entries/en/" + word.toLowerCase();
+            String url = "https://api.dictionaryapi.dev/api/v2/entries/en/" + word;
 
             HttpHeaders headers = new HttpHeaders();
             headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
             HttpEntity<String> entity = new HttpEntity<>(headers);
 
             ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-            String json = response.getBody();
 
-            JsonNode root = objectMapper.readTree(json);
+            JsonNode root = objectMapper.readTree(response.getBody());
             JsonNode firstEntry = root.get(0);
             JsonNode firstMeaning = firstEntry.get("meanings").get(0);
-            String partOfSpeech = firstMeaning.get("partOfSpeech").asText();
-
-            // 2. 品詞を日本語にする
-            String partOfSpeechJa = translatePartOfSpeech(partOfSpeech);
-
-            // 3. 単語そのものを日本語に翻訳する(長い説明文ではなく、単語だけを翻訳することでシンプルにする)
-            String meaningJa = translateToJapanese(word.toLowerCase());
-
-            // 4. シンプルな形にして返す
-            return new MeaningResponse(word.toUpperCase(), partOfSpeechJa, meaningJa);
-
+            return firstMeaning.get("partOfSpeech").asText();
         } catch (Exception e) {
-            e.printStackTrace();
-            return new MeaningResponse(word.toUpperCase(), null, "意味が見つかりませんでした");
+            return null; // 取れなくても、致命的なエラーにはしない
         }
     }
 
-// 品詞を日本語に変換する(よく出るものだけ対応)
+    // 品詞を日本語に変換する(よく出るものだけ対応)
     private String translatePartOfSpeech(String pos) {
+        if (pos == null) return null;
         switch (pos) {
             case "noun":
                 return "名詞";
@@ -111,13 +110,72 @@ public class WordController {
         }
     }
 
-// 英語の文章を、無料の翻訳API(MyMemory)で日本語にする
-    private String translateToJapanese(String text) throws Exception {
-        String encoded = java.net.URLEncoder.encode(text, "UTF-8");
-        String url = "https://api.mymemory.translated.net/get?q=" + encoded + "&langpair=en|ja";
+    // 単語を日本語に翻訳する。まず英日辞書(Jisho)を試し、ダメなら機械翻訳に頼る
+    private String translateWord(String word) {
+        String result = fetchFromJisho(word);
+        if (result != null) return result;
 
-        String json = restTemplate.getForObject(url, String.class);
-        JsonNode root = objectMapper.readTree(json);
-        return root.get("responseData").get("translatedText").asText();
+        result = translateViaMyMemory(word);
+        if (result != null) return result;
+
+        result = translateViaGoogle(word);
+        if (result != null) return result;
+
+        return "-";
     }
-}
+
+    // Jisho.org の辞書API(JMdictという、日本語⇔英語の対訳辞書データを使っている)から、
+    // その英単語に対応する日本語の単語を探す
+   // Jisho.org の辞書API(JMdictという、日本語⇔英語の対訳辞書データを使っている)から、
+    // その英単語に対応する日本語の単語を探す
+    private String fetchFromJisho(String word) {
+        try {
+            String encoded = java.net.URLEncoder.encode(word, "UTF-8");
+            String url = "https://jisho.org/api/v1/search/words?keyword=" + encoded;
+
+            String json = restTemplate.getForObject(url, String.class);
+            JsonNode root = objectMapper.readTree(json);
+            JsonNode data = root.get("data");
+            if (data == null || data.size() == 0) return null;
+
+            // 英語の意味が「その単語ぴったり」と一致する候補だけを採用する。
+            // ぴったり一致が無ければ、Jishoが「日本語の読み方」として拾ってきただけの
+            // 誤マッチの可能性が高いので、無理に採用しない
+            for (JsonNode entry : data) {
+                JsonNode senses = entry.get("senses");
+                if (senses == null) continue;
+                for (JsonNode sense : senses) {
+                    JsonNode defs = sense.get("english_definitions");
+                    if (defs == null) continue;
+                    for (JsonNode def : defs) {
+                        if (def.asText().equalsIgnoreCase(word)) {
+                            return buildJapaneseText(entry);
+                        }
+                    }
+                }
+            }
+            return null; // ぴったり一致が無い → 諦めて機械翻訳にバトンタッチする
+
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    // Jishoのエントリ1件から、日本語表記(漢字+読み方)の文字列を組み立てる
+    private String buildJapaneseText(JsonNode entry) {
+        JsonNode japaneseArr = entry.get("japanese");
+        if (japaneseArr == null || japaneseArr.size() == 0) return null;
+
+        JsonNode first = japaneseArr.get(0);
+        String kanji = (first.hasNonNull("word")) ? first.get("word").asText() : null;
+        String reading = (first.hasNonNull("reading")) ? first.get("reading").asText() : null;
+
+        if (kanji != null && reading != null && !kanji.equals(reading)) {
+            return kanji + "(" + reading + ")";
+        } else if (kanji != null) {
+            return kanji;
+        } else if (reading != null) {
+            return reading;
+        }
+        return null;
+    }
