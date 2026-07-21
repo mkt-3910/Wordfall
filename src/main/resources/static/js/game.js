@@ -535,7 +535,6 @@ document.getElementById('backToTitleBtn').addEventListener('click', () => {
 loadTitleHighScore();
 
 // 一時停止のオン/オフを切り替える
-// 一時停止のオン/オフを切り替える
 function togglePause() {
     if (gameOver) return;
     paused = !paused;
