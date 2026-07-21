@@ -87,7 +87,9 @@ public class WordController {
 
     // 品詞を日本語に変換する(よく出るものだけ対応)
     private String translatePartOfSpeech(String pos) {
-        if (pos == null) return null;
+        if (pos == null) {
+            return null;
+        }
         switch (pos) {
             case "noun":
                 return "名詞";
@@ -113,20 +115,26 @@ public class WordController {
     // 単語を日本語に翻訳する。まず英日辞書(Jisho)を試し、ダメなら機械翻訳に頼る
     private String translateWord(String word) {
         String result = fetchFromJisho(word);
-        if (result != null) return result;
+        if (result != null) {
+            return result;
+        }
 
         result = translateViaMyMemory(word);
-        if (result != null) return result;
+        if (result != null) {
+            return result;
+        }
 
         result = translateViaGoogle(word);
-        if (result != null) return result;
+        if (result != null) {
+            return result;
+        }
 
         return "-";
     }
 
     // Jisho.org の辞書API(JMdictという、日本語⇔英語の対訳辞書データを使っている)から、
     // その英単語に対応する日本語の単語を探す
-   // Jisho.org の辞書API(JMdictという、日本語⇔英語の対訳辞書データを使っている)から、
+    // Jisho.org の辞書API(JMdictという、日本語⇔英語の対訳辞書データを使っている)から、
     // その英単語に対応する日本語の単語を探す
     private String fetchFromJisho(String word) {
         try {
@@ -136,17 +144,23 @@ public class WordController {
             String json = restTemplate.getForObject(url, String.class);
             JsonNode root = objectMapper.readTree(json);
             JsonNode data = root.get("data");
-            if (data == null || data.size() == 0) return null;
+            if (data == null || data.size() == 0) {
+                return null;
+            }
 
             // 英語の意味が「その単語ぴったり」と一致する候補だけを採用する。
             // ぴったり一致が無ければ、Jishoが「日本語の読み方」として拾ってきただけの
             // 誤マッチの可能性が高いので、無理に採用しない
             for (JsonNode entry : data) {
                 JsonNode senses = entry.get("senses");
-                if (senses == null) continue;
+                if (senses == null) {
+                    continue;
+                }
                 for (JsonNode sense : senses) {
                     JsonNode defs = sense.get("english_definitions");
-                    if (defs == null) continue;
+                    if (defs == null) {
+                        continue;
+                    }
                     for (JsonNode def : defs) {
                         if (def.asText().equalsIgnoreCase(word)) {
                             return buildJapaneseText(entry);
@@ -164,7 +178,9 @@ public class WordController {
     // Jishoのエントリ1件から、日本語表記(漢字+読み方)の文字列を組み立てる
     private String buildJapaneseText(JsonNode entry) {
         JsonNode japaneseArr = entry.get("japanese");
-        if (japaneseArr == null || japaneseArr.size() == 0) return null;
+        if (japaneseArr == null || japaneseArr.size() == 0) {
+            return null;
+        }
 
         JsonNode first = japaneseArr.get(0);
         String kanji = (first.hasNonNull("word")) ? first.get("word").asText() : null;
@@ -180,7 +196,7 @@ public class WordController {
         return null;
     }
 
-    // 翻訳元2:MyMemory(無料翻訳API)
+    // 翻訳2:MyMemory
     private String translateViaMyMemory(String word) {
         try {
             String encoded = java.net.URLEncoder.encode(word, "UTF-8");
@@ -199,7 +215,7 @@ public class WordController {
         }
     }
 
-    // 翻訳元3:Google翻訳(非公式の無料エンドポイント。キー不要だが、あくまで補助的に使う)
+    // 翻訳3:Google翻訳
     private String translateViaGoogle(String word) {
         try {
             String encoded = java.net.URLEncoder.encode(word, "UTF-8");

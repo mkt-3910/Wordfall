@@ -4,9 +4,9 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 // @SpringBootApplication は3つのアノテーションをまとめたもの:
-// ①@Configuration  → このクラスが設定用のクラスであることを示す
-// ②@EnableAutoConfiguration → pom.xmlの依存関係を見て、必要な設定を自動で行う
-// ③@ComponentScan  → 同じパッケージ以下にある@Controller等のクラスを自動で見つけて登録する
+// @Configuration  → このクラスが設定用のクラスであることを示す
+// @EnableAutoConfiguration → pom.xmlの依存関係を見て、必要な設定を自動で行う
+// @ComponentScan  → 同じパッケージ以下にある@Controller等のクラスを自動で見つけて登録する
 @SpringBootApplication
 public class WordfallApplication {
 
