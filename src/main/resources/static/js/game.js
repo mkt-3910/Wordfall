@@ -248,81 +248,80 @@ let clearStartTime = 0;
 const CLEAR_DURATION = 350;
 
 async function lockPiece() {
-    for (const [cx, cy, letter] of current.cells) {
+    for (const [cx,cy,letter] of current.cells) {
         const gx = current.x + cx;
         const gy = current.y + cy;
-        if (gy >= 0) grid[gy][gx] = letter;
+        if(gy >= 0) grid[gy][gx] = letter;
     }
 
-    showCurrentPiece = false; // 固定した瞬間、操作中ミノの描画を止める
+    showCurrentPiece = false;
 
-    // ミノを置いた直後、浮いている文字を滑らかに落とす
-    const firstMoves = applyGravity();
-    await animateGravity(firstMoves);
-
-    const candidates = await collectCandidateRuns();
+    const cadidates = await collectCandidateRuns();
     const cellsToClear = new Set();
-    const foundWords = [];
+    const wordLogEntries = [];
 
-    for (const candidate of candidates) {
-        const points = candidate.word.length * 10;
-        score += points;
-        wordCount++;
-        allFoundWords.push(candidate.word);
-        for (const cell of candidate.cells) {
-            cellsToClear.add(`${cell.r},${cell.c}`);
-        }
-        foundWords.push(candidate.word);
-        showWordToast(candidate.word, points);
-    }
+    // 候補を1つずつ、意味が取れるかどうか確認しながら処理する
+    for (const cadidate of cadidates) {
+        const meaningRes = await fetch(`/api/meaning?word=${candidate.word}`);
 
-    if (cellsToClear.size > 0) {
-        clearingCells = new Map();
-        for (const key of cellsToClear) {
-            const [r, c] = key.split(',').map(Number);
-            clearingCells.set(key, grid[r][c]);
-        }
-        clearStartTime = performance.now();
-        await wait(CLEAR_DURATION);
-        clearingCells = null;
+         // レスポンスが無い、またはJSONがnull(意味が見つからなかった)場合はスキップする
+         let meaning = null;
+         if (meaningRes.ok) {
+            meaning = await meaningRes.json();
+         }
+         if(!meaning) {
+            continue;
+         }
 
-        for (const key of cellsToClear) {
-            const [r, c] = key.split(',').map(Number);
-            grid[r][c] = null;
-        }
+         const points = cadidate.word.length * 10;
+         score += points;
+         wordCount++;
+         allFoundWords.push(cadidate.word);
+         for (const cell of cadidate.cells) {
+            cellsToClear.add(`{cell.r},${cell.c}`);
+         }
 
-        // 消えたあと、その上にあった文字も滑らかに落とす
-        const secondMoves = applyGravity();
-        await animateGravity(secondMoves);
+         if(cellsToClear.size > 0) {
+            clearingCells = new Map();
+            for (const key of cellsToClear) {
+                const [r,c] = key.split(',').map(Number);
+                clearingCells.set(key, grid[r][c]);
+            }
+            clearStartTime = performance.now();
+            await wait(CLEAR_DURATION);
+            clearingCells = null;
 
-        for (const word of foundWords) {
-            const meaningRes = await fetch(`/api/meaning?word=${word}`);
-            const meaning = await meaningRes.json();
+            for (const key of cellsToClear) {
+                const [r,c] = key.split(',').map(Number);
+                grid[r][c] = null;
+            }
 
-            const shortDefinition = simplifyDefinition(meaning.definition);
+            // 消えたあと、その上にあった文字も滑らかに落とす
+            const secondMoves = applyGravity();
+            await animateGravity(secondMoves);
 
             const wordLog = document.getElementById('wordLog');
-            const entry = document.createElement('p');
-            entry.className = 'wordlog-entry';
-            entry.textContent = `${meaning.word} (${meaning.partOfSpeech ?? '?'}) - ${shortDefinition}`;
-            wordLog.prepend(entry);
-        }
-    }
+            for (const text of wordLogEntries) {
+                const entry = document.createElement('p');
+                entry.textContent = text;
+                wordLog.prepend(entry);
+            }
+         }
 
-    document.getElementById('score').textContent = score;
-    document.getElementById('wordCount').textContent = wordCount;
+         document.getElementById('score').textContent = score;
+         document.getElementById('wordCount').textContent = wordCount;
 
-    current = makePiece(randomKey());
-    visualY = current.y;
-    showCurrentPiece = true;
+         current = makePiece(randomKey());
+         visualY = current.y;
+         showCurrentPiece = true;
 
-    if (collides(current)) {
-        life--;
-        document.getElementById('life').textContent = life;
+         if(collides(current)) {
+            life--;
+            document.getElementById('life').textContent = life;
 
-        if (life <= 0) {
-            gameOver = true;
-            document.getElementById('finalScoreText').textContent = `スコア: ${score}　完成単語: ${wordCount}`;
+            if(life <= 0) {
+                gameOver = true;
+                document.getElementById('finalScoreText').textContent = `スコア: ${score}　完成単語: ${wordCount}`;
             document.getElementById('gameOverMessage').classList.add('show');
             await checkAndSaveHighScore();
             return;
@@ -331,6 +330,7 @@ async function lockPiece() {
         grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
     }
 }
+    }
 
 async function checkAndSaveHighScore() {
     try {
