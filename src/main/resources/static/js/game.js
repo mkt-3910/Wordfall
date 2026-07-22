@@ -139,19 +139,27 @@ function findRuns(line) {
 async function findWordMatchesInRun(run) {
     const s = run.map(cell => cell.ch).join('');
     const n = s.length;
-    const candidates = [];
 
-    // あり得る全ての部分文字列(3文字以上)を作り、1つずつサーバーに確認する
+    // まず、あり得る部分文字列(3文字以上)を全部リストアップしておく(まだ問い合わせない)
+    const subs = [];
     for (let start = 0; start < n; start++) {
         for (let end = start + 3; end <= n; end++) {
-            const sub = s.slice(start, end);
-            const res = await fetch(`/api/check-word?word=${sub}`);
-            const isWord = await res.json();
-            if (isWord) {
-                candidates.push({ start, end, len: end - start, word: sub });
-            }
+            subs.push({ start, end, word: s.slice(start, end) });
         }
     }
+
+    // 全部の候補を、順番に待つのではなく同時に問い合わせる
+    const isWordResults = await Promise.all(
+        subs.map(sub => fetch(`/api/check-word?word=${sub.word}`).then(res => res.json()))
+    );
+
+    // 結果が返ってきたものだけを、候補として残す
+    const candidates = [];
+    subs.forEach((sub, i) => {
+        if (isWordResults[i]) {
+            candidates.push({ start: sub.start, end: sub.end, len: sub.end - sub.start, word: sub.word });
+        }
+    });
 
     // 長い一致を優先しつつ、マスが被らないように選ぶ
     candidates.sort((a, b) => b.len - a.len);
@@ -264,21 +272,20 @@ async function lockPiece() {
     const cellsToClear = new Set();
     const wordLogEntries = [];
 
-    // ここから「候補を1つずつ確認する」ループ
-    // このループの中では、確認と記録(貯めておくだけ)しかしない
-    for (const candidate of candidates) {
-        const meaningRes = await fetch(`/api/meaning?word=${candidate.word}`);
+    // 全ての候補の意味を、順番に待つのではなく同時に問い合わせる
+    const meanings = await Promise.all(
+        candidates.map(candidate =>
+            fetch(`/api/meaning?word=${candidate.word}`)
+                .then(res => res.ok ? res.json() : null)
+                .catch(() => null)
+        )
+    );
 
-        let meaning = null;
-        try{
-            if(meaningRes.ok) {
-                meaning = await meaningRes.json();
-            }
-        } catch (e) {
-            meaning = null;
-        }
+    // 意味が確認できた候補だけ、これまで通り採用する
+    candidates.forEach((candidate, i) => {
+        const meaning = meanings[i];
         if (!meaning) {
-            continue;
+            return;
         }
 
         const points = candidate.word.length * 10;
@@ -292,10 +299,8 @@ async function lockPiece() {
 
         const shortDefinition = simplifyDefinition(meaning.definition);
         wordLogEntries.push(`${meaning.word} (${meaning.partOfSpeech ?? '?'}) - ${shortDefinition}`);
-    }
-    // ここでループが終わる。全部の候補を確認し終えた状態
+    });
 
-    // ここから先は、ループの外。1回だけ実行される
     if (cellsToClear.size > 0) {
         clearingCells = new Map();
         for (const key of cellsToClear) {
@@ -345,6 +350,7 @@ async function lockPiece() {
         grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
     }
 }
+
 async function checkAndSaveHighScore() {
     try {
         const res = await fetch('/api/score/high');
@@ -504,20 +510,19 @@ function drawClearingLetter(col, row, letter, progress) {
 
 window.addEventListener('keydown', async (e) => {
     if (!gameStarted || gameOver) return;
-   
-    //Pキー or Escapeキーで、一時停止のオン・オフを切り替える(ポーズ中でも受け付ける)
-    if(e.key === 'p' || e.key === 'P' || e.key === 'Escape') {
+
+    if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') {
         e.preventDefault();
         togglePause();
         return;
     }
 
-    if(paused) return; // ポーズ中は、これ以降の操作を受け付けない
+    if (paused) return;
 
-    if(e.key === 'ArrowLeft') {e.preventDefault(); moveHorizontal(-1);}
-    if(e.key === 'ArrowRight') {e.preventDefault(); moveHorizontal(1);}
-    if(e.key === 'ArrowDown') {e.preventDefault(); await softDrop();}
-    if(e.key === 'ArrowUp') {e.preventDefault(); tryRotate();}
+    if (e.key === 'ArrowLeft') { e.preventDefault(); moveHorizontal(-1); }
+    if (e.key === 'ArrowRight') { e.preventDefault(); moveHorizontal(1); }
+    if (e.key === 'ArrowDown') { e.preventDefault(); await softDrop(); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); tryRotate(); }
 });
 
 setInterval(async () => {

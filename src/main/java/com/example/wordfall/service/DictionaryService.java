@@ -274,8 +274,15 @@ public class DictionaryService {
                 return null;
             }
 
-            // 英語の意味が完全一致するものだけ採用
+            // 「よく使われる語」かつ「略語・地名・人名・俗語などではない」候補だけを採用する
             for (JsonNode entry : data) {
+
+                boolean isCommon
+                        = entry.hasNonNull("is_common") && entry.get("is_common").asBoolean();
+
+                if (!isCommon) {
+                    continue; // よく使われる語でなければ、この候補は見ない
+                }
 
                 JsonNode senses
                         = entry.get("senses");
@@ -285,6 +292,10 @@ public class DictionaryService {
                 }
 
                 for (JsonNode sense : senses) {
+
+                    if (containsExcludedTag(sense)) {
+                        continue; // 略語・地名・人名・俗語などは、この意味を無視する
+                    }
 
                     JsonNode defs
                             = sense.get("english_definitions");
@@ -312,6 +323,37 @@ public class DictionaryService {
             return null;
 
         }
+    }
+
+    /**
+     * その意味(sense)が、略語・地名・人名・俗語などの、 学習用途には向かないタグを持っているかどうかを判定する
+     */
+    private boolean containsExcludedTag(JsonNode sense) {
+
+        JsonNode partsOfSpeech
+                = sense.get("parts_of_speech");
+
+        if (partsOfSpeech == null) {
+            return false;
+        }
+
+        for (JsonNode tagNode : partsOfSpeech) {
+
+            String tag = tagNode.asText().toLowerCase();
+
+            if (tag.contains("abbreviation")
+                    || tag.contains("name")
+                    || tag.contains("place")
+                    || tag.contains("organization")
+                    || tag.contains("slang")
+                    || tag.contains("informal")) {
+
+                return true;
+            }
+
+        }
+
+        return false;
     }
 
     /**
