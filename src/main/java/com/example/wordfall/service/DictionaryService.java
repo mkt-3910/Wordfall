@@ -2,6 +2,7 @@ package com.example.wordfall.service;
 
 import java.net.URLEncoder;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -21,6 +22,10 @@ public class DictionaryService {
 
     // JSON解析用
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    // application.propertiesに書いたAPIキーを、ここに自動で読み込んでもらう
+    @Value("${deepl.api.key}")
+    private String deeplApiKey;
 
     /**
      * 英単語の意味を取得する
@@ -140,12 +145,19 @@ public class DictionaryService {
     }
 
     /**
-     * 日本語訳取得 優先順位 ① Jisho ② MyMemory ③ Google翻訳
+     * 日本語訳取得 優先順位 ① Jisho ② DeepL ③ MyMemory ④ Google翻訳
      */
     private String translateWord(String word) {
 
         String result
                 = fetchFromJisho(word);
+
+        if (result != null) {
+            return result;
+        }
+
+        result
+                = translateViaDeepL(word);
 
         if (result != null) {
             return result;
@@ -166,6 +178,62 @@ public class DictionaryService {
         }
 
         return null;
+    }
+
+    /**
+     * DeepL API翻訳
+     */
+    private String translateViaDeepL(String word) {
+
+        try {
+
+            String url
+                    = "https://api-free.deepl.com/v2/translate";
+
+            HttpHeaders headers
+                    = new HttpHeaders();
+
+            headers.set(
+                    "Authorization",
+                    "DeepL-Auth-Key " + deeplApiKey
+            );
+            headers.set(
+                    "Content-Type",
+                    "application/x-www-form-urlencoded"
+            );
+
+            String body
+                    = "text=" + URLEncoder.encode(word, "UTF-8")
+                    + "&source_lang=EN&target_lang=JA";
+
+            HttpEntity<String> entity
+                    = new HttpEntity<>(body, headers);
+
+            ResponseEntity<String> response
+                    = restTemplate.exchange(
+                            url,
+                            HttpMethod.POST,
+                            entity,
+                            String.class
+                    );
+
+            JsonNode root
+                    = objectMapper.readTree(response.getBody());
+
+            JsonNode translations
+                    = root.get("translations");
+
+            if (translations == null || translations.size() == 0) {
+                return null;
+            }
+
+            return translations.get(0).get("text").asText();
+
+        } catch (Exception e) {
+
+            return null;
+
+        }
     }
 
     /**
