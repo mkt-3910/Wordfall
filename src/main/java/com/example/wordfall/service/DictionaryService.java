@@ -237,7 +237,7 @@ public class DictionaryService {
     }
 
     /**
-     * 日本語か判定
+     * 日本語(ひらがな・漢字)を含んでいるか判定する。 カタカナだけの訳(単なる音写で、意味の理解に繋がりにくい)は除外するため、対象に含めない
      */
     private boolean isJapanese(String text) {
 
@@ -245,7 +245,7 @@ public class DictionaryService {
             return false;
         }
 
-        return text.matches(".*[ぁ-んァ-ヶ一-龯].*");
+        return text.matches(".*[ぁ-ん一-龯].*");
     }
 
     /**
