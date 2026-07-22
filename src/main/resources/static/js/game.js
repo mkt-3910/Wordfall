@@ -270,11 +270,15 @@ async function lockPiece() {
         const meaningRes = await fetch(`/api/meaning?word=${candidate.word}`);
 
         let meaning = null;
-        if (meaningRes.ok) {
-            meaning = await meaningRes.json();
+        try{
+            if(meaningRes.ok) {
+                meaning = await meaningRes.json();
+            }
+        } catch (e) {
+            meaning = null;
         }
         if (!meaning) {
-            continue; // 意味が無かった候補は、ここで諦めて次の候補へ
+            continue;
         }
 
         const points = candidate.word.length * 10;
