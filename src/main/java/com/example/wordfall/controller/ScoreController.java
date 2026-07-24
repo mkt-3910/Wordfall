@@ -6,9 +6,13 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import com.example.wordfall.entity.Score;
 import com.example.wordfall.repository.ScoreRepository;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
 public class ScoreController {
@@ -33,4 +37,17 @@ public class ScoreController {
         Score newScore = new Score(request.getScore(), request.getWordCount(), request.getWords(), LocalDateTime.now());
         return scoreRepository.save(newScore);
     }
+
+    // GET /api/score/list?page=0&size=5:ページ送り可能な履歴一覧を返す
+    @GetMapping("/api/score/list")
+    public Page<Score> getScoreList(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        return scoreRepository.findAllByOrderByCreatedAtDesc(pageable);
+    }
+
+}
+
 }

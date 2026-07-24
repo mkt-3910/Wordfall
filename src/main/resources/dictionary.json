@@ -1,0 +1,162 @@
+[
+  {
+    "word": "ACT",
+    "meaning": "行動する",
+    "partOfSpeech": "verb",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "ADD",
+    "meaning": "加える",
+    "partOfSpeech": "verb",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "AGE",
+    "meaning": "年齢",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "AIR",
+    "meaning": "空気",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "ALL",
+    "meaning": "すべて",
+    "partOfSpeech": "pronoun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "AND",
+    "meaning": "そして",
+    "partOfSpeech": "conjunction",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "ANT",
+    "meaning": "あり",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "ANY",
+    "meaning": "何でも",
+    "partOfSpeech": "determiner",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "APE",
+    "meaning": "類人猿",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "APP",
+    "meaning": "アプリ",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "ARM",
+    "meaning": "腕",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "ART",
+    "meaning": "芸術",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "ASK",
+    "meaning": "尋ねる",
+    "partOfSpeech": "verb",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "BAG",
+    "meaning": "かばん",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "BAT",
+    "meaning": "こうもり",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "BED",
+    "meaning": "ベッド",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "BEE",
+    "meaning": "はち",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "BIG",
+    "meaning": "大きい",
+    "partOfSpeech": "adjective",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "BOX",
+    "meaning": "箱",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "BOY",
+    "meaning": "少年",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  }
+]
