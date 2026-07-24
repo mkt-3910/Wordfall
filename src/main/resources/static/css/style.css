@@ -211,3 +211,73 @@ h1 {
     font-size: 15px;
     color: #d9c9a3;
 }
+/* 履歴一覧ページ */
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.history-card {
+    background: #262d29;
+    border-radius: 8px;
+    border: 1px solid rgba(237,232,222,0.1);
+    padding: 14px 18px;
+}
+
+.history-card-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.history-date {
+    font-size: 13px;
+    color: #8a9187;
+}
+
+.history-score {
+    font-weight: bold;
+    font-size: 16px;
+    color: #d6b24c;
+}
+
+.history-wordcount {
+    font-size: 13px;
+    color: #8a9187;
+    margin-bottom: 8px;
+}
+
+.history-words {
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.history-empty {
+    text-align: center;
+    color: #8a9187;
+    padding: 40px 0;
+}
+
+.history-pager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.page-info {
+    font-size: 14px;
+    color: #d9c9a3;
+}
+
+.history-pager button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.history-back {
+    text-align: center;
+}

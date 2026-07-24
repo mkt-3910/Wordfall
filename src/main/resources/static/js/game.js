@@ -546,6 +546,10 @@ document.getElementById('startBtn').addEventListener('click', () => {
     gameStarted = true;
 });
 
+document.getElementById('historyBtn').addEventListener('click', () => {
+    location.href = '/history';
+});
+
 document.getElementById('backToTitleBtn').addEventListener('click', () => {
     location.reload();
 });
