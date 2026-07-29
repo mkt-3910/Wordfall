@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>単語帳 - 言葉落とし</title>
+    <style>
+        body {
+            background: #1b2b38;
+            color: #f4ecd8;
+            font-family: sans-serif;
+            margin: 0;
+            padding: 40px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        .word-card {
+            background: #24384a;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 12px;
+        }
+        .word-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #d9c9a3;
+        }
+        .part-of-speech {
+            display: inline-block;
+            font-size: 13px;
+            color: #9fb3c8;
+            margin-left: 8px;
+        }
+        .meaning {
+            margin-top: 6px;
+            color: #f4ecd8;
+        }
+        .empty-message {
+            text-align: center;
+            color: #9fb3c8;
+            margin-top: 60px;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 24px;
+        }
+        .pagination button {
+            background: #d9c9a3;
+            color: #2b3a55;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .pagination button:disabled {
+            opacity: 0.4;
+            cursor: default;
+        }
+        .page-info {
+            align-self: center;
+            color: #9fb3c8;
+        }
+        .back-btn {
+            display: block;
+            margin: 30px auto 0;
+            background: #6c8a9c;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 24px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>単語帳</h1>
+
+        <div id="wordList"></div>
+        <div id="emptyMessage" class="empty-message" style="display:none;">
+            まだ完成した単語がありません
+        </div>
+
+        <div class="pagination">
+            <button id="prevBtn">← 前へ</button>
+            <span id="pageInfo" class="page-info"></span>
+            <button id="nextBtn">次へ →</button>
+        </div>
+
+        <button class="back-btn" id="backBtn">タイトルに戻る</button>
+    </div>
+
+    <script src="/js/vocabulary.js"></script>
+</body>
+</html>
