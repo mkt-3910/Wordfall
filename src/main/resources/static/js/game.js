@@ -140,7 +140,6 @@ async function findWordMatchesInRun(run) {
     const s = run.map(cell => cell.ch).join('');
     const n = s.length;
 
-    // まず、あり得る部分文字列(3文字以上)を全部リストアップしておく(まだ問い合わせない)
     const subs = [];
     for (let start = 0; start < n; start++) {
         for (let end = start + 3; end <= n; end++) {
@@ -148,12 +147,10 @@ async function findWordMatchesInRun(run) {
         }
     }
 
-    // 全部の候補を、順番に待つのではなく同時に問い合わせる
     const isWordResults = await Promise.all(
         subs.map(sub => fetch(`/api/check-word?word=${sub.word}`).then(res => res.json()))
     );
 
-    // 結果が返ってきたものだけを、候補として残す
     const candidates = [];
     subs.forEach((sub, i) => {
         if (isWordResults[i]) {
@@ -161,7 +158,6 @@ async function findWordMatchesInRun(run) {
         }
     });
 
-    // 長い一致を優先しつつ、マスが被らないように選ぶ
     candidates.sort((a, b) => b.len - a.len);
     const used = new Array(n).fill(false);
     const accepted = [];
@@ -179,7 +175,6 @@ async function findWordMatchesInRun(run) {
     }));
 }
 
-// 盤面全体から、実際に完成している単語(部分文字列マッチ込み)を集める
 async function collectCandidateRuns() {
     const lines = getAllLines();
     const allMatches = [];
@@ -192,8 +187,6 @@ async function collectCandidateRuns() {
     return allMatches;
 }
 
-// 各列ごとに、隙間を詰めて下に落とす。
-// 「どのマスが、どこからどこへ動いたか」をmovesとして記録して返す(アニメーション用)
 function applyGravity() {
     const moves = [];
     for (let c = 0; c < COLS; c++) {
@@ -224,12 +217,10 @@ function wait(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// 落下アニメーションの状態(drawが参照する)
 let gravityMoves = null;
 let gravityStartTime = 0;
-const GRAVITY_DURATION = 200; // ミリ秒
+const GRAVITY_DURATION = 200;
 
-// 重力による移動を、時間をかけて滑らかに見せる
 async function animateGravity(moves) {
     if (moves.length === 0) return;
     gravityMoves = moves;
@@ -238,7 +229,6 @@ async function animateGravity(moves) {
     gravityMoves = null;
 }
 
-// 単語完成トースト
 let toastTimer = null;
 function showWordToast(word, points) {
     const toast = document.getElementById('wordToast');
@@ -250,7 +240,25 @@ function showWordToast(word, points) {
     }, 900);
 }
 
-// 消えるマスの情報(縮小+フェードアニメーション用)
+// 完成した単語を、単語帳(データベース)に保存する
+async function saveWordLog(word, partOfSpeech, meaning) {
+    try {
+        await fetch('/api/word-log', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                word: word,
+                partOfSpeech: partOfSpeech,
+                meaning: meaning
+            })
+        });
+    } catch (e) {
+        console.error('単語帳への保存に失敗しました', e);
+    }
+}
+
 let clearingCells = null;
 let clearStartTime = 0;
 const CLEAR_DURATION = 350;
@@ -264,7 +272,6 @@ async function lockPiece() {
 
     showCurrentPiece = false;
 
-    // ミノを置いた直後、浮いている文字を滑らかに落とす
     const firstMoves = applyGravity();
     await animateGravity(firstMoves);
 
@@ -272,7 +279,6 @@ async function lockPiece() {
     const cellsToClear = new Set();
     const wordLogEntries = [];
 
-    // 全ての候補の意味を、順番に待つのではなく同時に問い合わせる
     const meanings = await Promise.all(
         candidates.map(candidate =>
             fetch(`/api/meaning?word=${candidate.word}`)
@@ -281,7 +287,6 @@ async function lockPiece() {
         )
     );
 
-    // 意味が確認できた候補だけ、これまで通り採用する
     candidates.forEach((candidate, i) => {
         const meaning = meanings[i];
         if (!meaning) {
@@ -299,6 +304,8 @@ async function lockPiece() {
 
         const shortDefinition = simplifyDefinition(meaning.definition);
         wordLogEntries.push(`${meaning.word} (${meaning.partOfSpeech ?? '?'}) - ${shortDefinition}`);
+
+        saveWordLog(meaning.word, meaning.partOfSpeech ?? '', meaning.definition);
     });
 
     if (cellsToClear.size > 0) {
@@ -409,7 +416,6 @@ async function softDrop() {
     }
 }
 
-// 進行度(0〜1)を、減速しながら止まる曲線に変換する(ease-out)
 function easeOut(t) {
     return 1 - Math.pow(1 - t, 3);
 }
@@ -431,10 +437,8 @@ function draw() {
         ctx.stroke();
     }
 
-    // 今、落下アニメーション中のマス(行列で引けるようにSetにしておく)
     const fallingKeys = gravityMoves ? new Set(gravityMoves.map(m => `${m.toRow},${m.col}`)) : null;
 
-    // 積まれた文字(落下アニメーション中のマスは、ここではスキップする)
     for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
             if (grid[r][c]) {
@@ -446,7 +450,6 @@ function draw() {
         }
     }
 
-    // 落下アニメーション中のマスを、途中の位置で描く
     if (gravityMoves) {
         const rawProgress = Math.min(1, (performance.now() - gravityStartTime) / GRAVITY_DURATION);
         const progress = easeOut(rawProgress);
@@ -456,7 +459,6 @@ function draw() {
         }
     }
 
-    // 消えるアニメーション中のマス(縮小+フェード)
     if (clearingCells) {
         const progress = Math.min(1, (performance.now() - clearStartTime) / CLEAR_DURATION);
         for (const [key, letter] of clearingCells) {
@@ -465,7 +467,6 @@ function draw() {
         }
     }
 
-    // 落下中のミノ(固定済みで、まだ新しいミノに差し替わっていない間は描かない)
     if (showCurrentPiece) {
         for (const [cx, cy, letter] of current.cells) {
             const gy = visualY + cy;
@@ -550,13 +551,16 @@ document.getElementById('historyBtn').addEventListener('click', () => {
     location.href = '/history';
 });
 
+document.getElementById('vocabularyBtn').addEventListener('click', () => {
+    location.href = '/vocabulary';
+});
+
 document.getElementById('backToTitleBtn').addEventListener('click', () => {
     location.reload();
 });
 
 loadTitleHighScore();
 
-// 一時停止のオン/オフを切り替える
 function togglePause() {
     if (gameOver) return;
     paused = !paused;
