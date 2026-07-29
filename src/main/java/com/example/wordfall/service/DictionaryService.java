@@ -9,91 +9,104 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import java.io.InputStream;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
+import javax.annotation.PostConstruct;
+
+import com.example.wordfall.model.DictionaryWord;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.example.wordfall.controller.MeaningResponse;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-@Service
-public class DictionaryService {
+@ Service 
 
-    // 辞書APIを呼び出すためのクラス
-    private final RestTemplate restTemplate = new RestTemplate();
+    public class DictionaryService {
 
-    // JSON解析用
-    private final ObjectMapper objectMapper = new ObjectMapper();
+        // 辞書APIを呼び出すためのクラス
+        private final RestTemplate restTemplate = new RestTemplate();
 
-    // application.propertiesに書いたAPIキーを、ここに自動で読み込んでもらう
-    @Value("${deepl.api.key}")
-    private String deeplApiKey;
+        // JSON解析用
+        private final ObjectMapper objectMapper = new ObjectMapper();
 
-    /**
-     * 英単語の意味を取得する
-     */
-    public MeaningResponse getMeaning(String word) {
+        // application.propertiesに書いたAPIキーを、ここに自動で読み込んでもらう
+        @Value("${deepl.api.key}")
+        private String deeplApiKey;
 
-        String lowerWord = word.toLowerCase();
+        /**
+         * 英単語の意味を取得する
+         */
+        public MeaningResponse getMeaning(String word) {
 
-        // 品詞取得
-        String partOfSpeech
-                = fetchPartOfSpeech(lowerWord);
+            String lowerWord = word.toLowerCase();
 
-        String partOfSpeechJa
-                = translatePartOfSpeech(partOfSpeech);
+            // 品詞取得
+            String partOfSpeech
+                    = fetchPartOfSpeech(lowerWord);
 
-        // 日本語訳取得
-        String meaning
-                = translateWord(lowerWord);
+            String partOfSpeechJa
+                    = translatePartOfSpeech(partOfSpeech);
 
-        // 日本語でなければ無効
-        if (!isJapanese(meaning)) {
-            return null;
+            // 日本語訳取得
+            String meaning
+                    = translateWord(lowerWord);
+
+            // 日本語でなければ無効
+            if (!isJapanese(meaning)) {
+                return null;
+            }
+
+            return new MeaningResponse(
+                    word.toUpperCase(),
+                    partOfSpeechJa,
+                    meaning
+            );
         }
 
-        return new MeaningResponse(
-                word.toUpperCase(),
-                partOfSpeechJa,
-                meaning
-        );
-    }
+        /**
+         * dictionaryapi.devから品詞取得
+         */
+        private String fetchPartOfSpeech(String word) {
 
-    /**
-     * dictionaryapi.devから品詞取得
-     */
-    private String fetchPartOfSpeech(String word) {
+            try {
 
-        try {
+                String url
+                        = "https://api.dictionaryapi.dev/api/v2/entries/en/" + word;
 
-            String url
-                    = "https://api.dictionaryapi.dev/api/v2/entries/en/" + word;
+                HttpHeaders headers = new HttpHeaders();
+                headers.set(
+                        "User-Agent",
+                        "Mozilla/5.0"
+                );
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.set(
-                    "User-Agent",
-                    "Mozilla/5.0"
-            );
+                HttpEntity<String> entity
+                        = new HttpEntity<>(headers);
 
-            HttpEntity<String> entity
-                    = new HttpEntity<>(headers);
+                ResponseEntity<String> response
+                        = restTemplate.exchange(
+                                url,
+                                HttpMethod.GET,
+                                entity,
+                                String.class
+                        );
 
-            ResponseEntity<String> response
-                    = restTemplate.exchange(
-                            url,
-                            HttpMethod.GET,
-                            entity,
-                            String.class
-                    );
+                JsonNode root
+                        = objectMapper.readTree(response.getBody());
 
-            JsonNode root
-                    = objectMapper.readTree(response.getBody());
+        private final Map<String, DictionaryWord> dictionaryMap
+                = new HashMap<>();
 
-            JsonNode firstEntry
-                    = root.get(0);
+        JsonNode firstEntry
+                = root.get(0);
 
-            JsonNode firstMeaning
-                    = firstEntry.get("meanings").get(0);
+        JsonNode firstMeaning
+                = firstEntry.get("meanings").get(0);
 
-            return firstMeaning
+    
+    return firstMeaning
                     .get("partOfSpeech")
                     .asText();
 
@@ -191,9 +204,9 @@ public class DictionaryService {
                     = "https://api-free.deepl.com/v2/translate";
 
             HttpHeaders headers
-                    = new HttpHeaders();
+            = new HttpHeaders();
 
-            headers.set(
+    headers.set(
                     "Authorization",
                     "DeepL-Auth-Key " + deeplApiKey
             );
@@ -203,27 +216,27 @@ public class DictionaryService {
             );
 
             String body
-                    = "text=" + URLEncoder.encode(word, "UTF-8")
-                    + "&source_lang=EN&target_lang=JA";
+            = "text=" + URLEncoder.encode(word, "UTF-8")
+            + "&source_lang=EN&target_lang=JA";
 
-            HttpEntity<String> entity
-                    = new HttpEntity<>(body, headers);
+    HttpEntity<String> entity
+            = new HttpEntity<>(body, headers);
 
-            ResponseEntity<String> response
-                    = restTemplate.exchange(
-                            url,
-                            HttpMethod.POST,
-                            entity,
-                            String.class
-                    );
+    ResponseEntity<String> response
+            = restTemplate.exchange(
+                    url,
+                    HttpMethod.POST,
+                    entity,
+                    String.class
+            );
 
-            JsonNode root
-                    = objectMapper.readTree(response.getBody());
+    JsonNode root
+            = objectMapper.readTree(response.getBody());
 
-            JsonNode translations
-                    = root.get("translations");
+    JsonNode translations
+            = root.get("translations");
 
-            if (translations == null || translations.size() == 0) {
+    if (translations == null || translations.size() == 0) {
                 return null;
             }
 
@@ -259,18 +272,18 @@ public class DictionaryService {
                     = URLEncoder.encode(word, "UTF-8");
 
             String url
-                    = "https://jisho.org/api/v1/search/words?keyword=" + encoded;
+            = "https://jisho.org/api/v1/search/words?keyword=" + encoded;
 
-            String json
-                    = restTemplate.getForObject(url, String.class);
+    String json
+            = restTemplate.getForObject(url, String.class);
 
-            JsonNode root
-                    = objectMapper.readTree(json);
+    JsonNode root
+            = objectMapper.readTree(json);
 
-            JsonNode data
-                    = root.get("data");
+    JsonNode data
+            = root.get("data");
 
-            if (data == null || data.size() == 0) {
+    if (data == null || data.size() == 0) {
                 return null;
             }
 
@@ -369,19 +382,19 @@ public class DictionaryService {
         }
 
         JsonNode first
-                = japanese.get(0);
+            = japanese.get(0);
 
-        String kanji
-                = first.hasNonNull("word")
-                ? first.get("word").asText()
-                : null;
+    String kanji
+            = first.hasNonNull("word")
+            ? first.get("word").asText()
+            : null;
 
-        String reading
-                = first.hasNonNull("reading")
-                ? first.get("reading").asText()
-                : null;
+    String reading
+            = first.hasNonNull("reading")
+            ? first.get("reading").asText()
+            : null;
 
-        if (kanji != null
+    if (kanji != null
                 && reading != null
                 && !kanji.equals(reading)) {
 
@@ -406,22 +419,22 @@ public class DictionaryService {
                     = URLEncoder.encode(word, "UTF-8");
 
             String url
-                    = "https://api.mymemory.translated.net/get?q="
-                    + encoded
-                    + "&langpair=en|ja";
+            = "https://api.mymemory.translated.net/get?q="
+            + encoded
+            + "&langpair=en|ja";
 
-            String json
-                    = restTemplate.getForObject(url, String.class);
+    String json
+            = restTemplate.getForObject(url, String.class);
 
-            JsonNode root
-                    = objectMapper.readTree(json);
+    JsonNode root
+            = objectMapper.readTree(json);
 
-            String translated
-                    = root.get("responseData")
-                            .get("translatedText")
-                            .asText();
+    String translated
+            = root.get("responseData")
+                    .get("translatedText")
+                    .asText();
 
-            if (translated == null
+    if (translated == null
                     || translated.toUpperCase().contains("MYMEMORY WARNING")) {
 
                 return null;
@@ -447,36 +460,37 @@ public class DictionaryService {
                     = URLEncoder.encode(word, "UTF-8");
 
             String url
-                    = "https://translate.googleapis.com/translate_a/single"
-                    + "?client=gtx"
-                    + "&sl=en"
-                    + "&tl=ja"
-                    + "&dt=t"
-                    + "&q=" + encoded;
+            = "https://translate.googleapis.com/translate_a/single"
+            + "?client=gtx"
+            + "&sl=en"
+            + "&tl=ja"
+            + "&dt=t"
+            + "&q=" + encoded;
 
-            HttpHeaders headers
-                    = new HttpHeaders();
+    HttpHeaders headers
+            = new HttpHeaders();
 
-            headers.set(
+    headers.set(
                     "User-Agent",
                     "Mozilla/5.0"
             );
 
             HttpEntity<String> entity
-                    = new HttpEntity<>(headers);
+            = new HttpEntity<>(headers);
 
-            ResponseEntity<String> response
-                    = restTemplate.exchange(
-                            url,
-                            HttpMethod.GET,
-                            entity,
-                            String.class
-                    );
+    ResponseEntity<String> response
+            = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    entity,
+                    String.class
+            );
 
-            JsonNode root
-                    = objectMapper.readTree(response.getBody());
+    JsonNode root
+            = objectMapper.readTree(response.getBody());
 
-            return root
+
+return root
                     .get(0)
                     .get(0)
                     .get(0)

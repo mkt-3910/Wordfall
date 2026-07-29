@@ -22,9 +22,15 @@ public class GameController {
         return "game";
     }
 
-     // GET /history:履歴一覧ページを表示する
-     @GetMapping("/history")
-     public String showHistory() {
+    // GET /history:履歴一覧ページを表示する
+    @GetMapping("/history")
+    public String showHistory() {
         return "history"; // templates/history.html を指す
-     }
+    }
+
+    // GET /vocabulary:単語帳ページを表示する
+    @GetMapping("/vocabulary")
+    public String showVocabulary() {
+        return "vocabulary"; // templates/vocabulary.html を指す
+    }
 }
