@@ -42,6 +42,15 @@ class WordfallApplicationTests {
     }
 
     @Test
+    void completedWordMeaningComesFromBundledJapaneseDictionary() throws Exception {
+        mockMvc.perform(get("/api/meaning").param("word", "CAT"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.word").value("CAT"))
+                .andExpect(jsonPath("$.partOfSpeech").value("名詞"))
+                .andExpect(jsonPath("$.definition").value("猫"));
+    }
+
+    @Test
     void invalidScorePayloadReturnsBadRequest() throws Exception {
         mockMvc.perform(post("/api/score")
                         .contentType(MediaType.APPLICATION_JSON)

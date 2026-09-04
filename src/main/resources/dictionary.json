@@ -158,5 +158,453 @@
     "length": 3,
     "level": 1,
     "enabled": true
+  },
+  {
+    "word": "BUS",
+    "meaning": "バス",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "CAR",
+    "meaning": "車",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "CAT",
+    "meaning": "猫",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "CUP",
+    "meaning": "カップ、杯",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "DAY",
+    "meaning": "日、一日",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "DOG",
+    "meaning": "犬",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "EAR",
+    "meaning": "耳",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "EAT",
+    "meaning": "食べる",
+    "partOfSpeech": "verb",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "EGG",
+    "meaning": "卵",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "FAN",
+    "meaning": "愛好者、扇風機",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "FOX",
+    "meaning": "きつね",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "FUN",
+    "meaning": "楽しみ、面白さ",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "HAT",
+    "meaning": "帽子",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "ICE",
+    "meaning": "氷",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "KEY",
+    "meaning": "鍵、重要なもの",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "MAN",
+    "meaning": "男性、人",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "MAP",
+    "meaning": "地図",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "PEN",
+    "meaning": "ペン",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "PIG",
+    "meaning": "豚",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "RED",
+    "meaning": "赤い、赤色の",
+    "partOfSpeech": "adjective",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "RUN",
+    "meaning": "走る",
+    "partOfSpeech": "verb",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "SEA",
+    "meaning": "海",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "SIT",
+    "meaning": "座る",
+    "partOfSpeech": "verb",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "SUN",
+    "meaning": "太陽",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "TOP",
+    "meaning": "頂上、最上部",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "TOY",
+    "meaning": "おもちゃ",
+    "partOfSpeech": "noun",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "WIN",
+    "meaning": "勝つ",
+    "partOfSpeech": "verb",
+    "length": 3,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "BOOK",
+    "meaning": "本",
+    "partOfSpeech": "noun",
+    "length": 4,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "GAME",
+    "meaning": "ゲーム、試合",
+    "partOfSpeech": "noun",
+    "length": 4,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "WORD",
+    "meaning": "単語、言葉",
+    "partOfSpeech": "noun",
+    "length": 4,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "PLAY",
+    "meaning": "遊ぶ、演奏する",
+    "partOfSpeech": "verb",
+    "length": 4,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "READ",
+    "meaning": "読む",
+    "partOfSpeech": "verb",
+    "length": 4,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "BLUE",
+    "meaning": "青い、青色",
+    "partOfSpeech": "adjective",
+    "length": 4,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "HOME",
+    "meaning": "家、家庭",
+    "partOfSpeech": "noun",
+    "length": 4,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "LOVE",
+    "meaning": "愛、愛する",
+    "partOfSpeech": "noun",
+    "length": 4,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "TIME",
+    "meaning": "時間、時",
+    "partOfSpeech": "noun",
+    "length": 4,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "TREE",
+    "meaning": "木、樹木",
+    "partOfSpeech": "noun",
+    "length": 4,
+    "level": 1,
+    "enabled": true
+  },
+  {
+    "word": "APPLE",
+    "meaning": "りんご",
+    "partOfSpeech": "noun",
+    "length": 5,
+    "level": 2,
+    "enabled": true
+  },
+  {
+    "word": "HOUSE",
+    "meaning": "家、住宅",
+    "partOfSpeech": "noun",
+    "length": 5,
+    "level": 2,
+    "enabled": true
+  },
+  {
+    "word": "HAPPY",
+    "meaning": "幸せな、うれしい",
+    "partOfSpeech": "adjective",
+    "length": 5,
+    "level": 2,
+    "enabled": true
+  },
+  {
+    "word": "SMILE",
+    "meaning": "笑顔、ほほ笑む",
+    "partOfSpeech": "noun",
+    "length": 5,
+    "level": 2,
+    "enabled": true
+  },
+  {
+    "word": "MUSIC",
+    "meaning": "音楽",
+    "partOfSpeech": "noun",
+    "length": 5,
+    "level": 2,
+    "enabled": true
+  },
+  {
+    "word": "WORLD",
+    "meaning": "世界",
+    "partOfSpeech": "noun",
+    "length": 5,
+    "level": 2,
+    "enabled": true
+  },
+  {
+    "word": "LIGHT",
+    "meaning": "光、明かり",
+    "partOfSpeech": "noun",
+    "length": 5,
+    "level": 2,
+    "enabled": true
+  },
+  {
+    "word": "NIGHT",
+    "meaning": "夜",
+    "partOfSpeech": "noun",
+    "length": 5,
+    "level": 2,
+    "enabled": true
+  },
+  {
+    "word": "DREAM",
+    "meaning": "夢、夢を見る",
+    "partOfSpeech": "noun",
+    "length": 5,
+    "level": 2,
+    "enabled": true
+  },
+  {
+    "word": "STUDY",
+    "meaning": "勉強する、研究する",
+    "partOfSpeech": "verb",
+    "length": 5,
+    "level": 2,
+    "enabled": true
+  },
+  {
+    "word": "LEARN",
+    "meaning": "学ぶ、習得する",
+    "partOfSpeech": "verb",
+    "length": 5,
+    "level": 2,
+    "enabled": true
+  },
+  {
+    "word": "GREEN",
+    "meaning": "緑色の、緑",
+    "partOfSpeech": "adjective",
+    "length": 5,
+    "level": 2,
+    "enabled": true
+  },
+  {
+    "word": "WATER",
+    "meaning": "水",
+    "partOfSpeech": "noun",
+    "length": 5,
+    "level": 2,
+    "enabled": true
+  },
+  {
+    "word": "SCHOOL",
+    "meaning": "学校",
+    "partOfSpeech": "noun",
+    "length": 6,
+    "level": 2,
+    "enabled": true
+  },
+  {
+    "word": "FRIEND",
+    "meaning": "友達、友人",
+    "partOfSpeech": "noun",
+    "length": 6,
+    "level": 2,
+    "enabled": true
+  },
+  {
+    "word": "FAMILY",
+    "meaning": "家族",
+    "partOfSpeech": "noun",
+    "length": 6,
+    "level": 2,
+    "enabled": true
+  },
+  {
+    "word": "ORANGE",
+    "meaning": "オレンジ、だいだい色",
+    "partOfSpeech": "noun",
+    "length": 6,
+    "level": 2,
+    "enabled": true
+  },
+  {
+    "word": "FLOWER",
+    "meaning": "花",
+    "partOfSpeech": "noun",
+    "length": 6,
+    "level": 2,
+    "enabled": true
+  },
+  {
+    "word": "FUTURE",
+    "meaning": "未来、将来",
+    "partOfSpeech": "noun",
+    "length": 6,
+    "level": 2,
+    "enabled": true
   }
 ]

@@ -1,19 +1,9 @@
 package com.example.wordfall.controller;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
-
-import jakarta.annotation.PostConstruct;
-
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -27,9 +17,6 @@ import com.example.wordfall.service.DictionaryService;
 @RestController
 public class WordController {
 
-    // 単語を保持しておく入れ物。検索が速いのでSetを使う
-    private final Set<String> words = new HashSet<>();
-
     // 辞書・翻訳の処理を担当するService。コンストラクタインジェクションで受け取る
     private final DictionaryService dictionaryService;
 
@@ -37,24 +24,8 @@ public class WordController {
         this.dictionaryService = dictionaryService;
     }
 
-    // アプリ起動時に1回だけ呼ばれるメソッド。ここでwords.txtを読み込む
-    @PostConstruct
-    public void loadWords() throws IOException {
-        ClassPathResource resource = new ClassPathResource("words.txt");
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String word = line.trim().toUpperCase(Locale.ROOT);
-                if (word.matches("[A-Z]{3,13}")) {
-                    words.add(word);
-                }
-            }
-        }
-    }
-
     // GET /api/check-word?word=CAT のようにアクセスされたら、
-    // wordsセットにその単語(大文字にしたもの)が含まれているかをtrue/falseで返す
+    // 日本語の意味を保証できるローカル辞書に含まれているかを返す
     @GetMapping("/api/check-word")
     public boolean returnWords(@RequestParam String word) {
         return isKnownWord(word);
@@ -72,7 +43,7 @@ public class WordController {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid word");
             }
             String normalized = word.toUpperCase(Locale.ROOT);
-            result.put(normalized, words.contains(normalized));
+            result.put(normalized, dictionaryService.hasGuaranteedMeaning(normalized));
         }
         return result;
     }
@@ -89,6 +60,6 @@ public class WordController {
     private boolean isKnownWord(String word) {
         return word != null
                 && word.matches("[A-Za-z]{3,13}")
-                && words.contains(word.toUpperCase(Locale.ROOT));
+                && dictionaryService.hasGuaranteedMeaning(word);
     }
 }

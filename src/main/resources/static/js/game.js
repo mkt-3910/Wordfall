@@ -59,6 +59,9 @@ const COMMON_THREE_LETTER_WORDS = [
     'HAT', 'ICE', 'KEY', 'MAN', 'MAP', 'PEN', 'PIG', 'RED', 'RUN', 'SEA',
     'SIT', 'SUN', 'TOP', 'TOY', 'WIN'
 ];
+const COMMON_FOUR_LETTER_WORDS = [
+    'BOOK', 'GAME', 'WORD', 'PLAY', 'READ', 'BLUE', 'HOME', 'LOVE', 'TIME', 'TREE'
+];
 const WORD_LINES = {
     I: [[[0, 1], [1, 1], [2, 1]], [[1, 1], [2, 1], [3, 1]]],
     T: [[[0, 1], [1, 1], [2, 1]]],
@@ -76,10 +79,12 @@ function makePiece(key) {
     const possibleLines = WORD_LINES[key];
 
     if (possibleLines && Math.random() < WORD_FRIENDLY_CHANCE) {
-        const word = COMMON_THREE_LETTER_WORDS[
-            Math.floor(Math.random() * COMMON_THREE_LETTER_WORDS.length)
-        ];
-        const line = possibleLines[Math.floor(Math.random() * possibleLines.length)];
+        const useFourLetterWord = key === 'I' && Math.random() < 0.35;
+        const words = useFourLetterWord ? COMMON_FOUR_LETTER_WORDS : COMMON_THREE_LETTER_WORDS;
+        const word = words[Math.floor(Math.random() * words.length)];
+        const line = useFourLetterWord
+            ? [[0, 1], [1, 1], [2, 1], [3, 1]]
+            : possibleLines[Math.floor(Math.random() * possibleLines.length)];
         line.forEach(([wordX, wordY], index) => {
             const cell = cells.find(([cellX, cellY]) => cellX === wordX && cellY === wordY);
             cell[2] = word[index];
@@ -355,6 +360,15 @@ function fetchMeaning(word) {
     return meaningCache.get(word);
 }
 
+async function fetchGuaranteedMeaning(word) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+        const meaning = await fetchMeaning(word);
+        if (meaning) return meaning;
+        meaningCache.delete(word);
+    }
+    throw new Error(`${word}の意味を取得できませんでした`);
+}
+
 async function lockPiece() {
     for (const [cx, cy, letter] of current.cells) {
         const gx = current.x + cx;
@@ -372,10 +386,10 @@ async function lockPiece() {
     const wordLogEntries = [];
 
     const meanings = await Promise.all(
-        candidates.map(candidate => fetchMeaning(candidate.word))
+        candidates.map(candidate => fetchGuaranteedMeaning(candidate.word))
     );
 
-    // 意味取得は外部APIに依存するため、辞書判定済みの単語成立とは切り離す。
+    // 成立対象は日本語の意味を持つローカル辞書の単語だけなので、全件を完成扱いにする。
     const successCount = candidates.length;
 
     //コンボ:単語ができた着地が連続するとコンボが伸びる。できなければリセット
@@ -406,11 +420,7 @@ async function lockPiece() {
         score += multiWordBonus;
     }
     candidates.forEach((candidate, i) => {
-        const meaning = meanings[i] ?? {
-            word: candidate.word,
-            partOfSpeech: '不明',
-            definition: '意味を取得できませんでした'
-        };
+        const meaning = meanings[i];
         if(candidate.word.length >= 4) {
             got4LetterThisGame = true;
         }

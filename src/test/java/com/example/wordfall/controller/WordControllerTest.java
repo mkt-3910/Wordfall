@@ -4,8 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
 
@@ -20,9 +20,11 @@ class WordControllerTest {
     private WordController controller;
 
     @BeforeEach
-    void setUp() throws IOException {
-        controller = new WordController(mock(DictionaryService.class));
-        controller.loadWords();
+    void setUp() {
+        DictionaryService dictionaryService = mock(DictionaryService.class);
+        when(dictionaryService.hasGuaranteedMeaning("CAT")).thenReturn(true);
+        when(dictionaryService.hasGuaranteedMeaning("DOG")).thenReturn(true);
+        controller = new WordController(dictionaryService);
     }
 
     @Test

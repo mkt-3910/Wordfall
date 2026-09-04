@@ -1,13 +1,19 @@
 package com.example.wordfall.service;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URLEncoder;
 import java.time.Duration;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -16,8 +22,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import com.example.wordfall.controller.MeaningResponse;
+import com.example.wordfall.model.DictionaryWord;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 @Service
 
@@ -26,6 +34,7 @@ public class DictionaryService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final Map<String, MeaningResponse> meaningCache = new ConcurrentHashMap<>();
+    private final Map<String, MeaningResponse> bundledMeanings;
 
     // application.propertiesに書いたAPIキーを、ここに自動で読み込んでもらう
     @Value("${deepl.api.key}")
@@ -37,6 +46,39 @@ public class DictionaryService {
                 .readTimeout(Duration.ofSeconds(3))
                 .build();
         this.objectMapper = objectMapper;
+        this.bundledMeanings = loadBundledMeanings();
+    }
+
+    private Map<String, MeaningResponse> loadBundledMeanings() {
+        ClassPathResource resource = new ClassPathResource("dictionary.json");
+        try (InputStream input = resource.getInputStream()) {
+            List<DictionaryWord> entries = objectMapper.readValue(
+                    input, new TypeReference<List<DictionaryWord>>() { });
+            Map<String, MeaningResponse> result = new HashMap<>();
+            for (DictionaryWord entry : entries) {
+                String word = entry.getWord() == null
+                        ? "" : entry.getWord().trim().toUpperCase(Locale.ROOT);
+                String meaning = entry.getMeaning() == null ? "" : entry.getMeaning().trim();
+                if (entry.isEnabled() && word.matches("[A-Z]{3,13}") && isJapanese(meaning)) {
+                    result.put(word, new MeaningResponse(
+                            word,
+                            translatePartOfSpeech(entry.getPartOfSpeech()),
+                            meaning));
+                }
+            }
+            if (result.isEmpty()) {
+                throw new IllegalStateException("Bundled dictionary has no valid entries");
+            }
+            return Collections.unmodifiableMap(result);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to load bundled dictionary", e);
+        }
+    }
+
+    public boolean hasGuaranteedMeaning(String word) {
+        return word != null
+                && word.matches("[A-Za-z]{3,13}")
+                && bundledMeanings.containsKey(word.toUpperCase(Locale.ROOT));
     }
 
     /**
@@ -46,6 +88,12 @@ public class DictionaryService {
 
         if (word == null || !word.matches("[A-Za-z]{3,13}")) {
             return null;
+        }
+
+        String upperWord = word.toUpperCase(Locale.ROOT);
+        MeaningResponse bundled = bundledMeanings.get(upperWord);
+        if (bundled != null) {
+            return bundled;
         }
 
         String lowerWord = word.toLowerCase(Locale.ROOT);
@@ -157,6 +205,9 @@ public class DictionaryService {
             case "conjunction":
                 return "接続詞";
 
+            case "determiner":
+                return "限定詞";
+
             case "interjection":
                 return "感嘆詞";
 
@@ -261,16 +312,14 @@ public class DictionaryService {
         }
     }
 
-    /**
-     * 日本語(ひらがな・漢字)を含んでいるか判定する。 カタカナだけの訳(単なる音写で、意味の理解に繋がりにくい)は除外するため、対象に含めない
-     */
+    /** 日本語（ひらがな・カタカナ・漢字）を含んでいるか判定する。 */
     private boolean isJapanese(String text) {
 
         if (text == null || text.trim().isEmpty()) {
             return false;
         }
 
-        return text.matches(".*[ぁ-ん一-龯].*");
+        return text.matches(".*[ぁ-んァ-ヶー一-龯].*");
     }
 
     /**
