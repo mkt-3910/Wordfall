@@ -49,16 +49,47 @@ const LETTER_POOL = (
     "P".repeat(2) + "F" + "Y" + "W" + "V" + "K" + "J" + "X" + "Q" + "Z"
 ).split('');
 
+// ときどき、ミノ内の一直線に基本的な3文字単語を仕込む。
+// 完成形を固定しすぎず、偶然単語がそろう楽しさも残す。
+const WORD_FRIENDLY_CHANCE = 0.7;
+const COMMON_THREE_LETTER_WORDS = [
+    'ACT', 'ADD', 'AGE', 'AIR', 'ALL', 'AND', 'ANT', 'ANY', 'ARM', 'ART',
+    'ASK', 'BAG', 'BAT', 'BED', 'BEE', 'BIG', 'BOX', 'BOY', 'BUS', 'CAR',
+    'CAT', 'CUP', 'DAY', 'DOG', 'EAR', 'EAT', 'EGG', 'FAN', 'FOX', 'FUN',
+    'HAT', 'ICE', 'KEY', 'MAN', 'MAP', 'PEN', 'PIG', 'RED', 'RUN', 'SEA',
+    'SIT', 'SUN', 'TOP', 'TOY', 'WIN'
+];
+const WORD_LINES = {
+    I: [[[0, 1], [1, 1], [2, 1]], [[1, 1], [2, 1], [3, 1]]],
+    T: [[[0, 1], [1, 1], [2, 1]]],
+    J: [[[0, 1], [1, 1], [2, 1]]],
+    L: [[[0, 1], [1, 1], [2, 1]]]
+};
+
 function randomLetter() {
     return LETTER_POOL[Math.floor(Math.random() * LETTER_POOL.length)];
 }
 
 function makePiece(key) {
     const def = SHAPES[key];
+    const cells = def.cells.map(([x, y]) => [x, y, randomLetter()]);
+    const possibleLines = WORD_LINES[key];
+
+    if (possibleLines && Math.random() < WORD_FRIENDLY_CHANCE) {
+        const word = COMMON_THREE_LETTER_WORDS[
+            Math.floor(Math.random() * COMMON_THREE_LETTER_WORDS.length)
+        ];
+        const line = possibleLines[Math.floor(Math.random() * possibleLines.length)];
+        line.forEach(([wordX, wordY], index) => {
+            const cell = cells.find(([cellX, cellY]) => cellX === wordX && cellY === wordY);
+            cell[2] = word[index];
+        });
+    }
+
     return {
         key,
         size: def.size,
-        cells: def.cells.map(([x, y]) => [x, y, randomLetter()]),
+        cells,
         x: Math.floor((COLS - def.size) / 2),
         y: 0,
     };
@@ -148,9 +179,18 @@ async function collectCandidateRuns() {
         const s = run.map(cell => cell.ch).join('');
         const n = s.length;
         const subs = [];
+        const seen = new Set();
         for (let start = 0; start < n; start++) {
             for (let end = start + 3; end <= n; end++) {
-                subs.push({ start, end, word: s.slice(start, end) });
+                const forward = s.slice(start, end);
+                const backward = [...forward].reverse().join('');
+                for (const word of [forward, backward]) {
+                    const key = `${start}:${end}:${word}`;
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        subs.push({ start, end, word });
+                    }
+                }
             }
         }
         return { run, subs };
@@ -159,15 +199,19 @@ async function collectCandidateRuns() {
     const uniqueWords = [...new Set(runsWithSubs.flatMap(({ subs }) => subs.map(sub => sub.word)))];
     if (uniqueWords.length === 0) return [];
 
-    const response = await fetch('/api/check-words', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(uniqueWords)
-    });
-    if (!response.ok) {
-        throw new Error(`単語判定に失敗しました (${response.status})`);
+    const checkResults = {};
+    const batchSize = 200;
+    for (let start = 0; start < uniqueWords.length; start += batchSize) {
+        const response = await fetch('/api/check-words', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(uniqueWords.slice(start, start + batchSize))
+        });
+        if (!response.ok) {
+            throw new Error(`単語判定に失敗しました (${response.status})`);
+        }
+        Object.assign(checkResults, await response.json());
     }
-    const checkResults = await response.json();
 
     // 結果をrunごとに組み立て
     const allMatches = [];
@@ -331,7 +375,8 @@ async function lockPiece() {
         candidates.map(candidate => fetchMeaning(candidate.word))
     );
 
-    const successCount = candidates.filter((c,i) => meanings[i]).length;
+    // 意味取得は外部APIに依存するため、辞書判定済みの単語成立とは切り離す。
+    const successCount = candidates.length;
 
     //コンボ:単語ができた着地が連続するとコンボが伸びる。できなければリセット
     if(successCount > 0) {
@@ -345,7 +390,7 @@ async function lockPiece() {
     }
     document.getElementById('combo').textContent = combo;
 
-    const hasBigWord = candidates.some((c,i) => meanings[i] && c.word.length >= 4);
+    const hasBigWord = candidates.some(candidate => candidate.word.length >= 4);
     if (hasBigWord) {
         triggerScreenEffect('flash');
     }
@@ -361,10 +406,11 @@ async function lockPiece() {
         score += multiWordBonus;
     }
     candidates.forEach((candidate, i) => {
-        const meaning = meanings[i];
-        if (!meaning) {
-            return;
-        }
+        const meaning = meanings[i] ?? {
+            word: candidate.word,
+            partOfSpeech: '不明',
+            definition: '意味を取得できませんでした'
+        };
         if(candidate.word.length >= 4) {
             got4LetterThisGame = true;
         }
