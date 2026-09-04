@@ -8,6 +8,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDateTime;
+
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.web.server.ResponseStatusException;
@@ -18,6 +20,7 @@ import com.example.wordfall.repository.ScoreRepository;
 import com.example.wordfall.repository.UnlockedAchievementRepository;
 import com.example.wordfall.repository.WordLogRepository;
 import com.example.wordfall.service.AchievementService;
+import com.example.wordfall.service.DictionaryService;
 
 class ControllerValidationTest {
 
@@ -47,18 +50,41 @@ class ControllerValidationTest {
     @Test
     void wordLogRejectsMarkupAndNormalizesValidWords() {
         WordLogRepository repository = mock(WordLogRepository.class);
-        WordLogController controller = new WordLogController(repository);
+        DictionaryService dictionaryService = mock(DictionaryService.class);
+        when(dictionaryService.hasGuaranteedMeaning("cat")).thenReturn(true);
+        when(dictionaryService.getMeaning("CAT"))
+                .thenReturn(new MeaningResponse("CAT", "名詞", "猫"));
+        WordLogController controller = new WordLogController(repository, dictionaryService);
         WordLogRequest invalid = wordLogRequest("<img>", "noun", "意味");
         assertThrows(ResponseStatusException.class, () -> controller.saveWord(invalid));
 
         when(repository.findByWordIgnoreCase("CAT")).thenReturn(java.util.Optional.empty());
-        controller.saveWord(wordLogRequest("cat", " noun ", " 猫 "));
+        controller.saveWord(wordLogRequest("cat", "改ざんされた品詞", "改ざんされた意味"));
 
         ArgumentCaptor<WordLog> captor = ArgumentCaptor.forClass(WordLog.class);
         verify(repository).save(captor.capture());
         assertEquals("CAT", captor.getValue().getWord());
-        assertEquals("noun", captor.getValue().getPartOfSpeech());
+        assertEquals("名詞", captor.getValue().getPartOfSpeech());
         assertEquals("猫", captor.getValue().getMeaning());
+    }
+
+    @Test
+    void wordLogRepairsAnExistingPlaceholderMeaning() {
+        WordLogRepository repository = mock(WordLogRepository.class);
+        DictionaryService dictionaryService = mock(DictionaryService.class);
+        WordLog existing = new WordLog(
+                "WIN", "不明", "意味を取得できませんでした", LocalDateTime.now());
+        when(dictionaryService.hasGuaranteedMeaning("win")).thenReturn(true);
+        when(dictionaryService.getMeaning("WIN"))
+                .thenReturn(new MeaningResponse("WIN", "動詞", "勝つ"));
+        when(repository.findByWordIgnoreCase("WIN")).thenReturn(java.util.Optional.of(existing));
+
+        new WordLogController(repository, dictionaryService)
+                .saveWord(wordLogRequest("win", "不明", "意味を取得できませんでした"));
+
+        verify(repository).save(existing);
+        assertEquals("動詞", existing.getPartOfSpeech());
+        assertEquals("勝つ", existing.getMeaning());
     }
 
     @Test

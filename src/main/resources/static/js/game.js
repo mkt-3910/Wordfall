@@ -57,10 +57,21 @@ const COMMON_THREE_LETTER_WORDS = [
     'ASK', 'BAG', 'BAT', 'BED', 'BEE', 'BIG', 'BOX', 'BOY', 'BUS', 'CAR',
     'CAT', 'CUP', 'DAY', 'DOG', 'EAR', 'EAT', 'EGG', 'FAN', 'FOX', 'FUN',
     'HAT', 'ICE', 'KEY', 'MAN', 'MAP', 'PEN', 'PIG', 'RED', 'RUN', 'SEA',
-    'SIT', 'SUN', 'TOP', 'TOY', 'WIN'
+    'SIT', 'SUN', 'TOP', 'TOY', 'WIN', 'APE', 'APP', 'ACE', 'AID', 'AIM',
+    'BAD', 'BAR', 'BIT', 'BUY', 'CAN', 'CAP', 'COW', 'CRY', 'CUT', 'DAD',
+    'DIE', 'DRY', 'END', 'EYE', 'FAR', 'FAT', 'FEW', 'FLY', 'GET', 'GOD',
+    'GUN', 'GUY', 'GYM', 'HIT', 'HOT', 'HOW', 'JOB', 'JOY', 'KID', 'LEG',
+    'LIE', 'LIP', 'LOT', 'LOW', 'MAY', 'MOM', 'NEW', 'NOT', 'NOW', 'NUT',
+    'OLD', 'ONE', 'OWN', 'PAY', 'PUT', 'RAW', 'SAD', 'SAY', 'SEE', 'SET',
+    'SKY', 'SON', 'TEA', 'TEN', 'TWO', 'USE', 'WAR', 'WAY', 'WEB', 'WET',
+    'WHY', 'YES', 'YET', 'ZOO'
 ];
 const COMMON_FOUR_LETTER_WORDS = [
-    'BOOK', 'GAME', 'WORD', 'PLAY', 'READ', 'BLUE', 'HOME', 'LOVE', 'TIME', 'TREE'
+    'BOOK', 'GAME', 'WORD', 'PLAY', 'READ', 'BLUE', 'HOME', 'LOVE', 'TIME', 'TREE',
+    'ABLE', 'BABY', 'BALL', 'BIRD', 'BOAT', 'CAKE', 'CALL', 'CARD', 'CITY', 'COOK',
+    'EASY', 'FACE', 'FARM', 'FIRE', 'FISH', 'FOOD', 'GIRL', 'GOOD', 'HAND', 'HELP',
+    'HOPE', 'JUMP', 'LIFE', 'MAKE', 'MILK', 'MOON', 'RAIN', 'RICE', 'ROAD', 'ROOM',
+    'SHOP', 'SING', 'SNOW', 'SONG', 'STAR', 'TEAM', 'WALK', 'WARM', 'WASH', 'WISH'
 ];
 const WORD_LINES = {
     I: [[[0, 1], [1, 1], [2, 1]], [[1, 1], [2, 1], [3, 1]]],

@@ -1,6 +1,8 @@
 package com.example.wordfall.controller;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -16,31 +18,40 @@ import org.springframework.dao.DataIntegrityViolationException;
 
 import com.example.wordfall.entity.WordLog;
 import com.example.wordfall.repository.WordLogRepository;
+import com.example.wordfall.service.DictionaryService;
 
 @RestController
 public class WordLogController {
 
     private final WordLogRepository wordLogRepository;
+    private final DictionaryService dictionaryService;
 
-    public WordLogController(WordLogRepository wordLogRepository) {
+    public WordLogController(WordLogRepository wordLogRepository, DictionaryService dictionaryService) {
         this.wordLogRepository = wordLogRepository;
+        this.dictionaryService = dictionaryService;
     }
 
     @PostMapping("/api/word-log")
     public void saveWord(@RequestBody WordLogRequest request) {
         validateWordLog(request);
-        String normalizedWord = request.getWord().toUpperCase();
+        String normalizedWord = request.getWord().toUpperCase(Locale.ROOT);
+        MeaningResponse dictionaryEntry = dictionaryService.getMeaning(normalizedWord);
+        if (dictionaryEntry == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Word has no guaranteed meaning");
+        }
 
-        boolean alreadyExists = wordLogRepository.findByWordIgnoreCase(normalizedWord).isPresent();
-
-        if (alreadyExists) {
+        Optional<WordLog> existing = wordLogRepository.findByWordIgnoreCase(normalizedWord);
+        if (existing.isPresent()) {
+            WordLog entry = existing.get();
+            entry.updateMeaning(dictionaryEntry.getPartOfSpeech(), dictionaryEntry.getDefinition());
+            wordLogRepository.save(entry);
             return;
         }
 
         WordLog newEntry = new WordLog(
                 normalizedWord,
-                request.getPartOfSpeech().trim(),
-                request.getMeaning().trim(),
+                dictionaryEntry.getPartOfSpeech(),
+                dictionaryEntry.getDefinition(),
                 LocalDateTime.now()
         );
         try {
@@ -68,9 +79,7 @@ public class WordLogController {
     private void validateWordLog(WordLogRequest request) {
         if (request == null || request.getWord() == null
                 || !request.getWord().matches("[A-Za-z]{3,13}")
-                || request.getPartOfSpeech() == null || request.getPartOfSpeech().length() > 50
-                || request.getMeaning() == null || request.getMeaning().trim().isEmpty()
-                || request.getMeaning().length() > 1000) {
+                || !dictionaryService.hasGuaranteedMeaning(request.getWord())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid word log");
         }
     }

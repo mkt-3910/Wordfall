@@ -53,4 +53,9 @@ public class WordLog {
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
+
+    public void updateMeaning(String partOfSpeech, String meaning) {
+        this.partOfSpeech = partOfSpeech;
+        this.meaning = meaning;
+    }
 }
