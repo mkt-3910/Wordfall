@@ -1,7 +1,12 @@
 package com.example.wordfall.service;
 
 import java.net.URLEncoder;
+import java.time.Duration;
+import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -18,22 +23,36 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class DictionaryService {
 
-    // 辞書APIを呼び出すためのクラス
-    private final RestTemplate restTemplate = new RestTemplate();
-
-    // JSON解析用
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
+    private final Map<String, MeaningResponse> meaningCache = new ConcurrentHashMap<>();
 
     // application.propertiesに書いたAPIキーを、ここに自動で読み込んでもらう
     @Value("${deepl.api.key}")
     private String deeplApiKey;
+
+    public DictionaryService(RestTemplateBuilder restTemplateBuilder, ObjectMapper objectMapper) {
+        this.restTemplate = restTemplateBuilder
+                .connectTimeout(Duration.ofSeconds(2))
+                .readTimeout(Duration.ofSeconds(3))
+                .build();
+        this.objectMapper = objectMapper;
+    }
 
     /**
      * 英単語の意味を取得する
      */
     public MeaningResponse getMeaning(String word) {
 
-        String lowerWord = word.toLowerCase();
+        if (word == null || !word.matches("[A-Za-z]{3,13}")) {
+            return null;
+        }
+
+        String lowerWord = word.toLowerCase(Locale.ROOT);
+        return meaningCache.computeIfAbsent(lowerWord, this::loadMeaning);
+    }
+
+    private MeaningResponse loadMeaning(String lowerWord) {
 
         // 品詞取得
         String partOfSpeech
@@ -51,11 +70,12 @@ public class DictionaryService {
             return null;
         }
 
-        return new MeaningResponse(
-                word.toUpperCase(),
+        MeaningResponse response = new MeaningResponse(
+                lowerWord.toUpperCase(Locale.ROOT),
                 partOfSpeechJa,
                 meaning
         );
+        return response;
     }
 
     /**
@@ -185,6 +205,10 @@ public class DictionaryService {
      * DeepL API翻訳
      */
     private String translateViaDeepL(String word) {
+
+        if (deeplApiKey == null || deeplApiKey.trim().isEmpty()) {
+            return null;
+        }
 
         try {
 

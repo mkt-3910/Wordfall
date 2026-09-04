@@ -3,22 +3,36 @@ const PAGE_SIZE = 5;
 
 // 指定したページのデータを取得して、画面に表示する
 async function loadPage(page) {
-    const res = await fetch(`/api/score/list?page=${page}&size=${PAGE_SIZE}`);
-    const data = await res.json();
+    try {
+        const res = await fetch(`/api/score/list?page=${page}&size=${PAGE_SIZE}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
 
-    currentPage = data.number;
+        currentPage = data.number;
 
-    renderList(data.content);
-    renderPager(data.number, data.totalPages);
+        renderList(data.content);
+        renderPager(data.number, data.totalPages);
+    } catch (error) {
+        console.error('履歴の取得に失敗しました', error);
+        const listEl = document.getElementById('historyList');
+        listEl.replaceChildren();
+        const message = document.createElement('p');
+        message.className = 'history-empty';
+        message.textContent = '履歴を読み込めませんでした';
+        listEl.appendChild(message);
+    }
 }
 
 // 1ページ分のデータを、カードとして描画する
 function renderList(scores) {
     const listEl = document.getElementById('historyList');
-    listEl.innerHTML = '';
+    listEl.replaceChildren();
 
     if (scores.length === 0) {
-        listEl.innerHTML = `<p class="history-empty">まだプレイ履歴がありません</p>`;
+        const message = document.createElement('p');
+        message.className = 'history-empty';
+        message.textContent = 'まだプレイ履歴がありません';
+        listEl.appendChild(message);
         return;
     }
 
@@ -31,14 +45,27 @@ function renderList(scores) {
 
         const wordsText = score.words ? score.words.split(',').join(' ・ ') : '(なし)';
 
-        card.innerHTML = `
-            <div class="history-card-header">
-                <span class="history-date">${dateText}</span>
-                <span class="history-score">スコア ${score.score}</span>
-            </div>
-            <div class="history-wordcount">完成単語数: ${score.wordCount}</div>
-            <div class="history-words">${wordsText}</div>
-        `;
+        const header = document.createElement('div');
+        header.className = 'history-card-header';
+
+        const dateEl = document.createElement('span');
+        dateEl.className = 'history-date';
+        dateEl.textContent = dateText;
+
+        const scoreEl = document.createElement('span');
+        scoreEl.className = 'history-score';
+        scoreEl.textContent = `スコア ${score.score}`;
+
+        const countEl = document.createElement('div');
+        countEl.className = 'history-wordcount';
+        countEl.textContent = `完成単語数: ${score.wordCount}`;
+
+        const wordsEl = document.createElement('div');
+        wordsEl.className = 'history-words';
+        wordsEl.textContent = wordsText;
+
+        header.append(dateEl, scoreEl);
+        card.append(header, countEl, wordsEl);
         listEl.appendChild(card);
     }
 }

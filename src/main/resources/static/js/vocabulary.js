@@ -4,12 +4,16 @@ const PAGE_SIZE = 10;
 async function loadWordLog(page) {
     try {
         const res = await fetch(`/api/word-log/list?page=${page}&size=${PAGE_SIZE}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
         renderList(data.content);
         renderPagination(data);
     } catch (e) {
         console.error('単語帳の取得に失敗しました', e);
+        const emptyMessage = document.getElementById('emptyMessage');
+        emptyMessage.textContent = '単語帳を読み込めませんでした';
+        emptyMessage.style.display = 'block';
     }
 }
 
@@ -17,7 +21,7 @@ function renderList(entries) {
     const wordList = document.getElementById('wordList');
     const emptyMessage = document.getElementById('emptyMessage');
 
-    wordList.innerHTML = '';
+    wordList.replaceChildren();
 
     if (!entries || entries.length === 0) {
         emptyMessage.style.display = 'block';
@@ -30,8 +34,16 @@ function renderList(entries) {
         card.className = 'word-card';
 
         const title = document.createElement('div');
-        title.innerHTML = `<span class="word-title">${entry.word}</span>`
-            + (entry.partOfSpeech ? `<span class="part-of-speech">${entry.partOfSpeech}</span>` : '');
+        const word = document.createElement('span');
+        word.className = 'word-title';
+        word.textContent = entry.word ?? '';
+        title.appendChild(word);
+        if (entry.partOfSpeech) {
+            const partOfSpeech = document.createElement('span');
+            partOfSpeech.className = 'part-of-speech';
+            partOfSpeech.textContent = entry.partOfSpeech;
+            title.appendChild(partOfSpeech);
+        }
 
         const meaning = document.createElement('div');
         meaning.className = 'meaning';

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>実績 - 言葉落とし</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<main class="stage achievements-stage">
+    <h1>実績</h1>
+    <p id="achievementSummary" class="achievement-summary"></p>
+    <div id="achievementList" class="achievement-list" aria-live="polite"></div>
+    <div class="history-back">
+        <button id="backBtn" class="primary-btn">タイトルに戻る</button>
+    </div>
+</main>
+<script th:src="@{/js/achievements.js}"></script>
+</body>
+</html>

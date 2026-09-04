@@ -2,10 +2,11 @@ package com.example.wordfall.entity;
 
 import java.time.LocalDateTime;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Column;
 
 @Entity
 public class WordLog {
@@ -14,8 +15,12 @@ public class WordLog {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false, unique = true, length = 32)
     private String word;
+    @Column(length = 50)
     private String partOfSpeech;
+
+    @Column(nullable = false, length = 1000)
     private String meaning;
     private LocalDateTime createdAt;
 

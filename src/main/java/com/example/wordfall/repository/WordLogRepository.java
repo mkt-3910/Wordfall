@@ -10,7 +10,7 @@ import com.example.wordfall.entity.WordLog;
 
 public interface WordLogRepository extends JpaRepository<WordLog, Long> {
 
-    Optional<WordLog> findByWord(String word);
+    Optional<WordLog> findByWordIgnoreCase(String word);
 
     Page<WordLog> findAllByOrderByWordAsc(Pageable pageable);
 }

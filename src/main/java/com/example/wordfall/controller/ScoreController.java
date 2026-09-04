@@ -13,6 +13,8 @@ import org.springframework.data.domain.Pageable;
 import com.example.wordfall.entity.Score;
 import com.example.wordfall.repository.ScoreRepository;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 public class ScoreController {
@@ -34,7 +36,9 @@ public class ScoreController {
     // POST /api/score:新しいプレイ結果を保存する
     @PostMapping("/api/score")
     public Score saveScore(@RequestBody ScoreRequest request) {
-        Score newScore = new Score(request.getScore(), request.getWordCount(), request.getWords(), LocalDateTime.now());
+        validateScore(request);
+        String normalizedWords = request.getWords() == null ? "" : request.getWords().toUpperCase();
+        Score newScore = new Score(request.getScore(), request.getWordCount(), normalizedWords, LocalDateTime.now());
         return scoreRepository.save(newScore);
     }
 
@@ -44,8 +48,37 @@ public class ScoreController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "5") int size) {
 
+        validatePage(page, size, 50);
         Pageable pageable = PageRequest.of(page, size);
         return scoreRepository.findAllByOrderByCreatedAtDesc(pageable);
+    }
+
+    private void validateScore(ScoreRequest request) {
+        if (request == null || request.getScore() < 0 || request.getScore() > 10_000_000
+                || request.getWordCount() < 0 || request.getWordCount() > 1000) {
+            badRequest("Invalid score");
+        }
+
+        String words = request.getWords() == null ? "" : request.getWords().trim();
+        String[] entries = words.isEmpty() ? new String[0] : words.split(",", -1);
+        if (entries.length != request.getWordCount() || words.length() > 16_000) {
+            badRequest("Word count does not match words");
+        }
+        for (String word : entries) {
+            if (!word.matches("[A-Za-z]{3,13}")) {
+                badRequest("Invalid word list");
+            }
+        }
+    }
+
+    private void validatePage(int page, int size, int maxSize) {
+        if (page < 0 || size < 1 || size > maxSize) {
+            badRequest("Invalid pagination");
+        }
+    }
+
+    private void badRequest(String message) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
     }
 
 }

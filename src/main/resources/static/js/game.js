@@ -12,6 +12,11 @@ let grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
 let score = 0;
 let life = 3;
 let wordCount = 0;
+let combo = 0;
+let bestComboThisGame = 0;
+let bestMultiWordThisGame = 0;
+let got4LetterThisGame = false;
+let got5LetterThisGame = false;
 let gameOver = false;
 let isProcessing = false;
 let gameStarted = false;
@@ -37,12 +42,11 @@ function randomKey() {
 }
 
 const LETTER_POOL = (
-    "E".repeat(12) + "A".repeat(9) + "I".repeat(9) + "O".repeat(8) +
-    "N".repeat(7) + "R".repeat(7) + "T".repeat(7) + "S".repeat(6) +
-    "L".repeat(4) + "U".repeat(4) + "D".repeat(4) + "G".repeat(3) +
-    "C".repeat(3) + "M".repeat(3) + "H".repeat(3) + "B".repeat(2) +
-    "P".repeat(2) + "F".repeat(2) + "V".repeat(2) + "W".repeat(2) +
-    "Y".repeat(2) + "K" + "J" + "X" + "Q" + "Z"
+    "E".repeat(14) + "A".repeat(11) + "I".repeat(10) + "O".repeat(8) +
+    "N".repeat(8) + "T".repeat(8) + "S".repeat(8) + "R".repeat(7) +
+    "L".repeat(5) + "D".repeat(5) + "U".repeat(3) + "C".repeat(3) +
+    "M".repeat(3) + "G".repeat(2) + "H".repeat(2) + "B".repeat(2) +
+    "P".repeat(2) + "F" + "Y" + "W" + "V" + "K" + "J" + "X" + "Q" + "Z"
 ).split('');
 
 function randomLetter() {
@@ -135,55 +139,57 @@ function findRuns(line) {
     return runs;
 }
 
-// 1本の連続した文字列(run)の中から、辞書に載っている単語の部分だけを探す
-async function findWordMatchesInRun(run) {
-    const s = run.map(cell => cell.ch).join('');
-    const n = s.length;
-
-    const subs = [];
-    for (let start = 0; start < n; start++) {
-        for (let end = start + 3; end <= n; end++) {
-            subs.push({ start, end, word: s.slice(start, end) });
-        }
-    }
-
-    const isWordResults = await Promise.all(
-        subs.map(sub => fetch(`/api/check-word?word=${sub.word}`).then(res => res.json()))
-    );
-
-    const candidates = [];
-    subs.forEach((sub, i) => {
-        if (isWordResults[i]) {
-            candidates.push({ start: sub.start, end: sub.end, len: sub.end - sub.start, word: sub.word });
-        }
-    });
-
-    candidates.sort((a, b) => b.len - a.len);
-    const used = new Array(n).fill(false);
-    const accepted = [];
-    for (const c of candidates) {
-        let overlap = false;
-        for (let i = c.start; i < c.end; i++) if (used[i]) { overlap = true; break; }
-        if (overlap) continue;
-        for (let i = c.start; i < c.end; i++) used[i] = true;
-        accepted.push(c);
-    }
-
-    return accepted.map(c => ({
-        word: c.word,
-        cells: run.slice(c.start, c.end),
-    }));
-}
-
 async function collectCandidateRuns() {
     const lines = getAllLines();
+    const runs = lines.flatMap(findRuns);
+
+    // 各runの部分文字列(subs)を先に全部洗い出す
+    const runsWithSubs = runs.map(run => {
+        const s = run.map(cell => cell.ch).join('');
+        const n = s.length;
+        const subs = [];
+        for (let start = 0; start < n; start++) {
+            for (let end = start + 3; end <= n; end++) {
+                subs.push({ start, end, word: s.slice(start, end) });
+            }
+        }
+        return { run, subs };
+    });
+
+    const uniqueWords = [...new Set(runsWithSubs.flatMap(({ subs }) => subs.map(sub => sub.word)))];
+    if (uniqueWords.length === 0) return [];
+
+    const response = await fetch('/api/check-words', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(uniqueWords)
+    });
+    if (!response.ok) {
+        throw new Error(`単語判定に失敗しました (${response.status})`);
+    }
+    const checkResults = await response.json();
+
+    // 結果をrunごとに組み立て
     const allMatches = [];
-    for (const line of lines) {
-        for (const run of findRuns(line)) {
-            const matches = await findWordMatchesInRun(run);
-            allMatches.push(...matches);
+    for (const { run, subs } of runsWithSubs) {
+        const candidates = [];
+        subs.forEach(sub => {
+            if (checkResults[sub.word] === true) {
+                candidates.push({ start: sub.start, end: sub.end, len: sub.end - sub.start, word: sub.word });
+            }
+        });
+
+        candidates.sort((a, b) => b.len - a.len);
+        const used = new Array(run.length).fill(false);
+        for (const c of candidates) {
+            let overlap = false;
+            for (let i = c.start; i < c.end; i++) if (used[i]) { overlap = true; break; }
+            if (overlap) continue;
+            for (let i = c.start; i < c.end; i++) used[i] = true;
+            allMatches.push({ word: c.word, cells: run.slice(c.start, c.end) });
         }
     }
+
     return allMatches;
 }
 
@@ -219,7 +225,7 @@ function wait(ms) {
 
 let gravityMoves = null;
 let gravityStartTime = 0;
-const GRAVITY_DURATION = 200;
+const GRAVITY_DURATION = 120;
 
 async function animateGravity(moves) {
     if (moves.length === 0) return;
@@ -230,9 +236,9 @@ async function animateGravity(moves) {
 }
 
 let toastTimer = null;
-function showWordToast(word, points) {
+function showToastMessage(text) {
     const toast = document.getElementById('wordToast');
-    toast.textContent = `${word} 完成！ +${points}`;
+    toast.textContent = text;
     toast.classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => {
@@ -240,10 +246,32 @@ function showWordToast(word, points) {
     }, 900);
 }
 
+function triggerScreenEffect(className) {
+    const boardWrap = document.querySelector('.board-wrap');
+    boardWrap.classList.remove(className);
+    void boardWrap.offsetWidth;
+    boardWrap.classList.add(className);
+    setTimeout(() => boardWrap.classList.remove(className), 400);
+}
+
+function showScorePopup(col, row, points) {
+    const boardWrap = document.querySelector('.board-wrap');
+    const popup = document.createElement('div');
+    popup.className = 'score-popup';
+    popup.textContent = `+${points}`;
+    popup.style.left = `${col * CELL + CELL / 2}px`;
+    popup.style.top = `${row * CELL}px`;
+    boardWrap.appendChild(popup);
+    setTimeout(() => popup.remove(), 800);
+}
+
+function showWordToast(word,points) {
+    showToastMessage(`${word}完成! +${points}`);
+}
 // 完成した単語を、単語帳(データベース)に保存する
 async function saveWordLog(word, partOfSpeech, meaning) {
     try {
-        await fetch('/api/word-log', {
+        const response = await fetch('/api/word-log', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -254,6 +282,7 @@ async function saveWordLog(word, partOfSpeech, meaning) {
                 meaning: meaning
             })
         });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
     } catch (e) {
         console.error('単語帳への保存に失敗しました', e);
     }
@@ -261,7 +290,26 @@ async function saveWordLog(word, partOfSpeech, meaning) {
 
 let clearingCells = null;
 let clearStartTime = 0;
-const CLEAR_DURATION = 350;
+const CLEAR_DURATION = 220;
+
+const meaningCache = new Map();
+function fetchMeaning(word) {
+    if (!meaningCache.has(word)) {
+        const request =
+            fetch(`/api/meaning?word=${word}`)
+                .then(res => res.ok ? res.json() : null)
+                .then(result => {
+                    if (!result) meaningCache.delete(word);
+                    return result;
+                })
+                .catch(() => {
+                    meaningCache.delete(word);
+                    return null;
+                });
+        meaningCache.set(word, request);
+    }
+    return meaningCache.get(word);
+}
 
 async function lockPiece() {
     for (const [cx, cy, letter] of current.cells) {
@@ -280,20 +328,52 @@ async function lockPiece() {
     const wordLogEntries = [];
 
     const meanings = await Promise.all(
-        candidates.map(candidate =>
-            fetch(`/api/meaning?word=${candidate.word}`)
-                .then(res => res.ok ? res.json() : null)
-                .catch(() => null)
-        )
+        candidates.map(candidate => fetchMeaning(candidate.word))
     );
 
+    const successCount = candidates.filter((c,i) => meanings[i]).length;
+
+    //コンボ:単語ができた着地が連続するとコンボが伸びる。できなければリセット
+    if(successCount > 0) {
+        combo++;
+    } else {
+        combo = 0;
+    }
+
+    if(combo > bestComboThisGame) {
+        bestComboThisGame = combo;
+    }
+    document.getElementById('combo').textContent = combo;
+
+    const hasBigWord = candidates.some((c,i) => meanings[i] && c.word.length >= 4);
+    if (hasBigWord) {
+        triggerScreenEffect('flash');
+    }
+
+    const comboBonus = combo > 1 ? (combo - 1) * 5 : 0;
+
+    //②マルチワードボーナス:1回の着地で2単語以上同時にできた時のボーナス
+    const multiWordBonus = successCount >= 2 ? successCount * 20 : 0;
+    if (successCount > bestMultiWordThisGame) {
+        bestMultiWordThisGame = successCount;
+    }
+    if(multiWordBonus > 0) {
+        score += multiWordBonus;
+    }
     candidates.forEach((candidate, i) => {
         const meaning = meanings[i];
         if (!meaning) {
             return;
         }
+        if(candidate.word.length >= 4) {
+            got4LetterThisGame = true;
+        }
+        if (candidate.word.length >= 5) {
+            got5LetterThisGame = true;
+        }
 
-        const points = candidate.word.length * 10;
+        const points = candidate.word.length * 10 + comboBonus;
+
         score += points;
         wordCount++;
         allFoundWords.push(candidate.word);
@@ -302,11 +382,19 @@ async function lockPiece() {
         }
         showWordToast(candidate.word, points);
 
+        const firstCell = candidate.cells[0];
+        showScorePopup(firstCell.c,firstCell.r,points);
+
         const shortDefinition = simplifyDefinition(meaning.definition);
         wordLogEntries.push(`${meaning.word} (${meaning.partOfSpeech ?? '?'}) - ${shortDefinition}`);
 
-        saveWordLog(meaning.word, meaning.partOfSpeech ?? '', meaning.definition);
+        void saveWordLog(meaning.word, meaning.partOfSpeech ?? '', meaning.definition);
     });
+
+    if (multiWordBonus > 0) {
+        showToastMessage(`${successCount}単語同時！ ボーナス +${multiWordBonus}`);
+        triggerScreenEffect('shake');
+    }
 
     if (cellsToClear.size > 0) {
         clearingCells = new Map();
@@ -351,6 +439,7 @@ async function lockPiece() {
             document.getElementById('finalScoreText').textContent = `スコア: ${score}　完成単語: ${wordCount}`;
             document.getElementById('gameOverMessage').classList.add('show');
             await checkAndSaveHighScore();
+            await sendAchievementCheck();
             return;
         }
 
@@ -361,24 +450,48 @@ async function lockPiece() {
 async function checkAndSaveHighScore() {
     try {
         const res = await fetch('/api/score/high');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const high = await res.json();
+        const isNewHighScore = score > high.score;
 
-        if (score > high.score) {
-            await fetch('/api/score', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    score: score,
-                    wordCount: wordCount,
-                    words: allFoundWords.join(',')
-                })
-            });
+        const saveResponse = await fetch('/api/score', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                score: score,
+                wordCount: wordCount,
+                words: allFoundWords.join(',')
+            })
+        });
+        if (!saveResponse.ok) throw new Error(`HTTP ${saveResponse.status}`);
+
+        if (isNewHighScore) {
             document.getElementById('highScoreText').textContent = '🎉 ハイスコア更新！';
         } else {
             document.getElementById('highScoreText').textContent = `ハイスコア: ${high.score}`;
         }
     } catch (e) {
         console.error(e);
+    }
+}
+
+async function sendAchievementCheck() {
+    try {
+        const response = await fetch('/api/achievements/check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                wordsCompletedThisGame: wordCount,
+                bestComboThisGame: bestComboThisGame,
+                bestMultiWordThisGame: bestMultiWordThisGame,
+                got4LetterThisGame: got4LetterThisGame,
+                got5LetterThisGame: got5LetterThisGame,
+                finalScore: score
+            })
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    } catch (e) {
+        console.error('実績判定への送信に失敗しました', e);
     }
 }
 
@@ -411,8 +524,14 @@ async function softDrop() {
         current.y++;
     } else {
         isProcessing = true;
-        await lockPiece();
-        isProcessing = false;
+        try {
+            await lockPiece();
+        } catch (error) {
+            console.error('ゲーム処理に失敗しました', error);
+            showToastMessage('通信に失敗しました。もう一度お試しください');
+        } finally {
+            isProcessing = false;
+        }
     }
 }
 
@@ -475,12 +594,27 @@ function draw() {
     }
 }
 
+function drawRoundedRect(x, y, width, height, radius) {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.arcTo(x + width, y, x + width, y + radius, radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.arcTo(x + width, y + height, x + width - radius, y + height, radius);
+    ctx.lineTo(x + radius, y + height);
+    ctx.arcTo(x, y + height, x, y + height - radius, radius);
+    ctx.lineTo(x, y + radius);
+    ctx.arcTo(x, y, x + radius, y, radius);
+    ctx.closePath();
+}
+
 function drawLetter(col, row, letter) {
     const x = col * CELL;
     const y = row * CELL;
-    ctx.fillStyle = "#d9c9a3";
-    ctx.fillRect(x + 2, y + 2, CELL - 4, CELL - 4);
-    ctx.fillStyle = "#2b3a55";
+    ctx.fillStyle = "#58cc02";
+    drawRoundedRect(x + 2, y + 2, CELL - 4, CELL - 4, 8);
+    ctx.fill();
+    ctx.fillStyle = "#5b3a1e";
     ctx.font = "bold 18px sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -498,9 +632,10 @@ function drawClearingLetter(col, row, letter, progress) {
     ctx.translate(cx, cy);
     ctx.scale(scale, scale);
 
-    ctx.fillStyle = "#f4ecd8";
-    ctx.fillRect(-(CELL - 4) / 2, -(CELL - 4) / 2, CELL - 4, CELL - 4);
-    ctx.fillStyle = "#2b3a55";
+    ctx.fillStyle = "#58cc02";
+    drawRoundedRect(-(CELL - 4) / 2, -(CELL - 4) / 2, CELL - 4, CELL - 4, 8);
+    ctx.fill();
+    ctx.fillStyle = "#5b3a1e";
     ctx.font = "bold 18px sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -547,12 +682,17 @@ document.getElementById('startBtn').addEventListener('click', () => {
     gameStarted = true;
 });
 
+
+document.getElementById('vocabularyBtn').addEventListener('click', () => {
+    location.href = '/vocabulary';
+});
+
 document.getElementById('historyBtn').addEventListener('click', () => {
     location.href = '/history';
 });
 
-document.getElementById('vocabularyBtn').addEventListener('click', () => {
-    location.href = '/vocabulary';
+document.getElementById('achievementsBtn').addEventListener('click', () => {
+    location.href = '/achievements';
 });
 
 document.getElementById('backToTitleBtn').addEventListener('click', () => {

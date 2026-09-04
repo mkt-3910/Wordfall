@@ -1,8 +1,8 @@
 body {
     margin: 0;
     min-height: 100vh;
-    background: #1f2421;
-    color: #ede8de;
+    background: #ddf4ff;
+    color: #3c3c3c;
     font-family: sans-serif;
     display: flex;
     justify-content: center;
@@ -17,6 +17,8 @@ body {
 h1 {
     text-align: center;
     margin: 0 0 20px;
+    color: #3c3c3c;
+    font-weight: 800;
 }
 
 .layout {
@@ -31,9 +33,9 @@ h1 {
 }
 
 #board {
-    background: #262d29;
-    border-radius: 8px;
-    border: 1px solid rgba(237,232,222,0.15);
+    background: #f7f7f7;
+    border-radius: 16px;
+    border: 2px solid #e5e5e5;
     display: block;
 }
 
@@ -46,9 +48,9 @@ h1 {
 }
 
 .panel {
-    background: #262d29;
-    border-radius: 8px;
-    border: 1px solid rgba(237,232,222,0.1);
+    background: #ffffff;
+    border-radius: 14px;
+    border: 2px solid #e5e5e5;
     padding: 8px 14px;
     display: flex;
     justify-content: space-between;
@@ -57,18 +59,20 @@ h1 {
 
 .panel .label {
     font-size: 13px;
-    color: #8a9187;
+    color: #777777;
+    font-weight: 700;
 }
 
 .panel .value {
-    font-weight: bold;
+    font-weight: 800;
     font-size: 18px;
+    color: #3c3c3c;
 }
 
 .wordlog-panel {
-    background: #262d29;
-    border-radius: 8px;
-    border: 1px solid rgba(237,232,222,0.1);
+    background: #ffffff;
+    border-radius: 14px;
+    border: 2px solid #e5e5e5;
     padding: 10px 14px;
     flex: 1;
     display: flex;
@@ -78,7 +82,8 @@ h1 {
 
 .wordlog-title {
     font-size: 12px;
-    color: #8a9187;
+    color: #777777;
+    font-weight: 700;
     margin-bottom: 8px;
 }
 
@@ -95,7 +100,8 @@ h1 {
     font-size: 13px;
     line-height: 1.5;
     padding-bottom: 6px;
-    border-bottom: 1px solid rgba(237,232,222,0.06);
+    border-bottom: 1px solid #e5e5e5;
+    color: #3c3c3c;
 }
 
 .wordlog-entry {
@@ -113,16 +119,17 @@ h1 {
     top: 12px;
     left: 50%;
     transform: translateX(-50%) translateY(-10px);
-    background: rgba(127,174,156,0.95);
-    color: #1f2421;
+    background: #58cc02;
+    color: #ffffff;
     padding: 6px 16px;
     border-radius: 20px;
-    font-weight: bold;
+    font-weight: 800;
     font-size: 14px;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.25s ease, transform 0.25s ease;
     white-space: nowrap;
+    box-shadow: 0 3px 0 #4caf00;
 }
 
 .word-toast.show {
@@ -135,8 +142,8 @@ h1 {
     display: none;
     position: absolute;
     inset: 0;
-    background: rgba(31,36,29,0.92);
-    border-radius: 8px;
+    background: rgba(255,255,255,0.97);
+    border-radius: 16px;
     flex-direction: column;
     align-items: center;
     justify-content: center;
@@ -157,37 +164,46 @@ h1 {
 
 .overlay-title {
     font-size: 22px;
-    font-weight: bold;
+    font-weight: 800;
     margin: 0;
+    color: #3c3c3c;
 }
 
 .overlay-sub {
     font-size: 14px;
-    color: #d9c9a3;
+    color: #1cb0f6;
+    font-weight: 700;
     margin: 0;
 }
 
 .primary-btn {
     margin-top: 8px;
-    background: #7fae9c;
-    color: #1f2421;
+    background: #58cc02;
+    color: #ffffff;
     border: none;
-    border-radius: 8px;
+    border-bottom: 4px solid #4caf00;
+    border-radius: 14px;
     padding: 10px 22px;
     font-size: 14px;
-    font-weight: bold;
+    font-weight: 800;
     cursor: pointer;
+    transition: transform 0.05s ease;
 }
 
 .primary-btn:hover {
-    background: #93c0ae;
+    background: #61d907;
+}
+
+.primary-btn:active {
+    transform: translateY(2px);
+    border-bottom-width: 2px;
 }
 
 /* タイトル画面 */
 .title-screen {
     position: fixed;
     inset: 0;
-    background: #1f2421;
+    background: #ddf4ff;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -201,7 +217,7 @@ h1 {
 }
 
 .title-desc {
-    color: #8a9187;
+    color: #777777;
     font-size: 13px;
     line-height: 1.6;
 }
@@ -209,7 +225,8 @@ h1 {
 .title-highscore {
     margin: 16px 0;
     font-size: 15px;
-    color: #d9c9a3;
+    font-weight: 700;
+    color: #1cb0f6;
 }
 /* 履歴一覧ページ */
 .history-list {
@@ -220,9 +237,9 @@ h1 {
 }
 
 .history-card {
-    background: #262d29;
-    border-radius: 8px;
-    border: 1px solid rgba(237,232,222,0.1);
+    background: #ffffff;
+    border-radius: 14px;
+    border: 2px solid #e5e5e5;
     padding: 14px 18px;
 }
 
@@ -234,29 +251,30 @@ h1 {
 
 .history-date {
     font-size: 13px;
-    color: #8a9187;
+    color: #777777;
 }
 
 .history-score {
-    font-weight: bold;
+    font-weight: 800;
     font-size: 16px;
-    color: #d6b24c;
+    color: #ffc800;
 }
 
 .history-wordcount {
     font-size: 13px;
-    color: #8a9187;
+    color: #777777;
     margin-bottom: 8px;
 }
 
 .history-words {
     font-size: 13px;
     line-height: 1.6;
+    color: #3c3c3c;
 }
 
 .history-empty {
     text-align: center;
-    color: #8a9187;
+    color: #777777;
     padding: 40px 0;
 }
 
@@ -270,7 +288,8 @@ h1 {
 
 .page-info {
     font-size: 14px;
-    color: #d9c9a3;
+    color: #1cb0f6;
+    font-weight: 700;
 }
 
 .history-pager button:disabled {
@@ -280,4 +299,100 @@ h1 {
 
 .history-back {
     text-align: center;
+}
+
+/* 実績一覧ページ */
+.achievements-stage {
+    max-width: 720px;
+}
+
+.achievement-summary {
+    text-align: center;
+    color: #1cb0f6;
+    font-weight: 800;
+}
+
+.achievement-list {
+    display: grid;
+    gap: 12px;
+    margin: 24px 0;
+}
+
+.achievement-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    background: #ffffff;
+    border: 2px solid #e5e5e5;
+    border-radius: 14px;
+}
+
+.achievement-card.unlocked {
+    border-color: #ffc800;
+}
+
+.achievement-card.locked {
+    filter: grayscale(1);
+    opacity: 0.65;
+}
+
+.achievement-icon {
+    font-size: 30px;
+}
+
+.achievement-card h2 {
+    margin: 0 0 4px;
+    font-size: 18px;
+}
+
+.achievement-card p {
+    margin: 0;
+    color: #777777;
+}
+
+/* 演出:大きい単語ができた時に画面が光る */
+@keyframes screenFlash {
+    0% { filter: brightness(1); }
+    30% { filter: brightness(1.5); }
+    100% { filter: brightness(1); }
+}
+
+.board-wrap.flash {
+    animation: screenFlash 0.4s ease;
+}
+
+/* 演出:複数単語同時完成で画面が揺れる */
+@keyframes screenShake {
+    0%, 100% { transform: translate(0, 0); }
+    20% { transform: translate(-5px, 3px); }
+    40% { transform: translate(5px, -3px); }
+    60% { transform: translate(-4px, 2px); }
+    80% { transform: translate(4px, -2px); }
+}
+
+.board-wrap.shake {
+    animation: screenShake 0.4s ease;
+}
+
+/* 演出:スコアポップアップ */
+.score-popup {
+    position: absolute;
+    color: #58cc02;
+    font-weight: 800;
+    font-size: 16px;
+    pointer-events: none;
+    animation: scorePopupFloat 0.8s ease forwards;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+
+@keyframes scorePopupFloat {
+    0% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-40px);
+    }
 }

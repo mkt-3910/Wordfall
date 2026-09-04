@@ -2,10 +2,11 @@ package com.example.wordfall.entity;
 
 import java.time.LocalDateTime;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
 
 @Entity
 public class Score {
@@ -18,6 +19,7 @@ public class Score {
 
     private int wordCount;
 
+    @Lob
     private String words;
 
     private LocalDateTime createdAt;

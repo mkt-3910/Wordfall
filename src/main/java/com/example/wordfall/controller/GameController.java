@@ -33,4 +33,10 @@ public class GameController {
     public String showVocabulary() {
         return "vocabulary"; // templates/vocabulary.html を指す
     }
+
+    // GET /achievements:実績一覧ページを表示する
+    @GetMapping("/achievements")
+    public String showAchievements() {
+        return "achievements";
+    }
 }
