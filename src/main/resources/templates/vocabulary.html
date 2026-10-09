@@ -2,110 +2,29 @@
 <html lang="ja" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>単語帳 - 言葉落とし</title>
-    <style>
-    body {
-        background: #ddf4ff;
-        color: #3c3c3c;
-        font-family: sans-serif;
-        margin: 0;
-        padding: 40px;
-    }
-    h1 {
-        text-align: center;
-        margin-bottom: 30px;
-        color: #3c3c3c;
-    }
-    .container {
-        max-width: 700px;
-        margin: 0 auto;
-    }
-    .word-card {
-        background: #ffffff;
-        border: 2px solid #e5e5e5;
-        border-radius: 14px;
-        padding: 16px 20px;
-        margin-bottom: 12px;
-    }
-    .word-title {
-        font-size: 20px;
-        font-weight: 800;
-        color: #58cc02;
-    }
-    .part-of-speech {
-        display: inline-block;
-        font-size: 13px;
-        color: #1cb0f6;
-        font-weight: 700;
-        margin-left: 8px;
-    }
-    .meaning {
-        margin-top: 6px;
-        color: #3c3c3c;
-    }
-    .empty-message {
-        text-align: center;
-        color: #777777;
-        margin-top: 60px;
-    }
-    .pagination {
-        display: flex;
-        justify-content: center;
-        gap: 10px;
-        margin-top: 24px;
-    }
-    .pagination button {
-        background: #58cc02;
-        color: #ffffff;
-        border: none;
-        border-bottom: 4px solid #4caf00;
-        border-radius: 12px;
-        padding: 8px 16px;
-        font-weight: 800;
-        cursor: pointer;
-    }
-    .pagination button:disabled {
-        opacity: 0.4;
-        cursor: default;
-    }
-    .page-info {
-        align-self: center;
-        color: #1cb0f6;
-        font-weight: 700;
-    }
-    .back-btn {
-        display: block;
-        margin: 30px auto 0;
-        background: #58cc02;
-        color: #ffffff;
-        border: none;
-        border-bottom: 4px solid #4caf00;
-        border-radius: 12px;
-        padding: 10px 24px;
-        font-size: 16px;
-        font-weight: 800;
-        cursor: pointer;
-    }
-    </style>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
 <body>
-    <div class="container">
-        <h1>単語帳</h1>
 
-        <div id="wordList"></div>
-        <div id="emptyMessage" class="empty-message" style="display:none;">
-            まだ完成した単語がありません
-        </div>
+<main class="stage">
+    <h1>単語帳</h1>
 
-        <div class="pagination">
-            <button id="prevBtn">← 前へ</button>
-            <span id="pageInfo" class="page-info"></span>
-            <button id="nextBtn">次へ →</button>
-        </div>
+    <div id="wordList" aria-live="polite"></div>
+    <p id="emptyMessage" class="history-empty" hidden>まだ完成した単語がありません</p>
 
-        <button class="back-btn" id="backBtn">タイトルに戻る</button>
+    <div class="history-pager">
+        <button id="prevBtn" class="primary-btn">前へ</button>
+        <span id="pageInfo" class="page-info"></span>
+        <button id="nextBtn" class="primary-btn">次へ</button>
     </div>
 
-    <script src="/js/vocabulary.js"></script>
+    <div class="history-back">
+        <button id="backBtn" class="primary-btn">タイトルに戻る</button>
+    </div>
+</main>
+
+<script th:src="@{/js/vocabulary.js}"></script>
 </body>
 </html>

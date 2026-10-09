@@ -1,18 +1,22 @@
 let currentPage = 0;
+let latestRequest = 0;
 const PAGE_SIZE = 5;
 
 // 指定したページのデータを取得して、画面に表示する
 async function loadPage(page) {
+    const requestId = ++latestRequest;
     try {
         const res = await fetch(`/api/score/list?page=${page}&size=${PAGE_SIZE}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
+        if (requestId !== latestRequest) return;
 
         currentPage = data.number;
 
         renderList(data.content);
         renderPager(data.number, data.totalPages);
     } catch (error) {
+        if (requestId !== latestRequest) return;
         console.error('履歴の取得に失敗しました', error);
         const listEl = document.getElementById('historyList');
         listEl.replaceChildren();
@@ -74,7 +78,7 @@ function renderList(scores) {
 function renderPager(pageNumber, totalPages) {
     document.getElementById('pageInfo').textContent =
         totalPages === 0 ? '0 / 0' : `${pageNumber + 1} / ${totalPages}`;
-     document.getElementById('prevBtn').disabled = (pageNumber <= 0);
+    document.getElementById('prevBtn').disabled = (pageNumber <= 0);
     document.getElementById('nextBtn').disabled = (pageNumber >= totalPages - 1);
 }
 

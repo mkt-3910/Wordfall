@@ -1,60 +1,64 @@
 package com.example.wordfall;
 
+import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.Map;
+
+import jakarta.servlet.http.Cookie;
+
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-class WordfallApplicationTests {
-
-    @Autowired
-    private MockMvc mockMvc;
+class WordfallApplicationTests extends ApiTestSupport {
 
     @Test
-    void allPagesRender() throws Exception {
-        mockMvc.perform(get("/"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("言葉落とし")));
-        mockMvc.perform(get("/history")).andExpect(status().isOk());
-        mockMvc.perform(get("/vocabulary")).andExpect(status().isOk());
-        mockMvc.perform(get("/achievements")).andExpect(status().isOk());
+    void allPagesRenderWithSecurityHeaders() throws Exception {
+        for (String page : new String[] {"/", "/history", "/vocabulary", "/achievements"}) {
+            mvc.perform(get(page))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("言葉落とし")))
+                    .andExpect(content().string(not(containsString("<style"))))
+                    .andExpect(content().string(not(containsString("style=\""))))
+                    .andExpect(header().string("Content-Security-Policy", containsString("script-src 'self'")))
+                    .andExpect(header().string("X-Content-Type-Options", "nosniff"))
+                    .andExpect(header().string("X-Frame-Options", "DENY"));
+        }
     }
 
     @Test
-    void batchWordCheckReturnsDictionaryMatches() throws Exception {
-        mockMvc.perform(post("/api/check-words")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("[\"CAT\",\"DOG\",\"ZZZZZZZZZZZZZ\"]"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.CAT").value(true))
-                .andExpect(jsonPath("$.DOG").value(true))
-                .andExpect(jsonPath("$.ZZZZZZZZZZZZZ").value(false));
+    void firstVisitIssuesHttpOnlyPlayerCookieAndKeepsIt() throws Exception {
+        mvc.perform(get("/"))
+                .andExpect(header().string("Set-Cookie", allOf(
+                        containsString("wordfall_player="), containsString("HttpOnly"), containsString("SameSite=Lax"))));
+        mvc.perform(get("/").cookie(newPlayer()))
+                .andExpect(header().doesNotExist("Set-Cookie"));
+        // 壊れたCookieは新しいIDに置き換える
+        mvc.perform(get("/").cookie(new Cookie("wordfall_player", "broken")))
+                .andExpect(header().string("Set-Cookie", containsString("wordfall_player=")));
     }
 
     @Test
-    void completedWordMeaningComesFromBundledJapaneseDictionary() throws Exception {
-        mockMvc.perform(get("/api/meaning").param("word", "CAT"))
+    void apiResponsesAreNotCached() throws Exception {
+        mvc.perform(get("/api/achievements").cookie(newPlayer()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.word").value("CAT"))
-                .andExpect(jsonPath("$.partOfSpeech").value("名詞"))
-                .andExpect(jsonPath("$.definition").value("猫"));
+                .andExpect(header().string("Cache-Control", "no-store"));
     }
 
     @Test
-    void invalidScorePayloadReturnsBadRequest() throws Exception {
-        mockMvc.perform(post("/api/score")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"score\":10,\"wordCount\":1,\"words\":\"<script>\"}"))
-                .andExpect(status().isBadRequest());
+    void oldTrustingEndpointsAreGone() throws Exception {
+        Cookie player = newPlayer();
+        postJson(player, "/api/game-results", Map.of()).andExpect(status().isNotFound());
+        postJson(player, "/api/check-words", Map.of()).andExpect(status().isNotFound());
+        postJson(player, "/api/word-log", Map.of("word", "CAT")).andExpect(status().is4xxClientError());
+        mvc.perform(get("/api/meaning?word=CAT").cookie(player)).andExpect(status().isNotFound());
     }
 }
