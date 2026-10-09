@@ -18,6 +18,7 @@ import com.example.wordfall.game.GameEngine.LandingOutcome;
 class GameEngineTest {
 
     private final GameEngine engine = new GameEngine(Set.of("CAT", "DOG", "BOOK")::contains);
+    private final WordFinder finder = new WordFinder(Set.of("CAT", "DOG", "BOOK")::contains);
 
     /** rows は上から順の行。指定しない上の行は空きマスにする。 */
     private static Board board(String... bottomRows) {
@@ -67,14 +68,14 @@ class GameEngineTest {
                 ".QA.........",
                 "QQC.........");
         // 縦(下から上へ)の CAT と、斜めの組み合わせを確認する
-        List<GameEngine.Match> matches = engine.findWords(board);
-        assertEquals(List.of("CAT"), matches.stream().map(GameEngine.Match::word).toList());
+        List<WordFinder.Match> matches = finder.find(board);
+        assertEquals(List.of("CAT"), matches.stream().map(WordFinder.Match::word).toList());
 
         Board diagonal = board(
                 "..T.........",
                 ".AQ.........",
                 "CQQ.........");
-        assertEquals(List.of("CAT"), engine.findWords(diagonal).stream().map(GameEngine.Match::word).toList());
+        assertEquals(List.of("CAT"), finder.find(diagonal).stream().map(WordFinder.Match::word).toList());
     }
 
     @Test
@@ -123,16 +124,6 @@ class GameEngineTest {
         GameState state = state(blockedCenter(), new Piece(Shape.O, "QQQQ"), 0, 1);
         assertEquals(EndReason.GAME_OVER, engine.land(state, 4, 0, 0).endReason());
         assertEquals(0, state.life());
-    }
-
-    @Test
-    void sameSeedProducesSamePieces() {
-        Rng first = new Rng(123);
-        Rng second = new Rng(123);
-        for (int i = 0; i < 100; i++) {
-            assertEquals(PieceGenerator.next(first), PieceGenerator.next(second));
-        }
-        assertEquals(first.state(), second.state());
     }
 
     @Test

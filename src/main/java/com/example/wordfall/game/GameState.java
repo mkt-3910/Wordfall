@@ -24,11 +24,6 @@ public final class GameState {
         this.wordCount = wordCount;
     }
 
-    public static GameState newGame(int seed) {
-        Rng rng = new Rng(seed);
-        return new GameState(new Board(), rng, PieceGenerator.next(rng), 0, GameEngine.START_LIFE, 0, 0, 0);
-    }
-
     public Board board() { return board; }
     public Rng rng() { return rng; }
     public Piece piece() { return piece; }

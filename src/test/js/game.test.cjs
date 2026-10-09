@@ -168,3 +168,18 @@ test('too many starts shows a wait message and keeps the start button usable', a
     assert.equal(g.element('startBtn').disabled, false);
     assert.equal(g.run('gameStarted'), false);
 });
+
+test('lucky pieces from the server are announced and drawn in gold', async () => {
+    const lucky = { ...PIECE, lucky: true };
+    const g = game(url => (url === '/api/games'
+        ? reply({ gameId: 'g1', maxLandings: 10000, life: 3, board: EMPTY_ROWS, piece: lucky })
+        : reply(landingResult({ nextPiece: PIECE }))));
+    await g.run('startGame()');
+    assert.equal(g.run('current.lucky'), true);
+    assert.equal(g.element('wordToast').textContent, 'ラッキーミノ！');
+
+    g.element('wordToast').textContent = '';
+    await dropToBottom(g);
+    assert.equal(g.run('current.lucky'), false);
+    assert.equal(g.element('wordToast').textContent, '');
+});

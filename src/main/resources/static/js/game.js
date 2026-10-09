@@ -6,6 +6,9 @@ const COLS = 12;
 const ROWS = 13;
 const CELL = 32;
 const DROP_INTERVAL = 900;
+const BLOCK_COLOR = "#58cc02";
+// ミノだけで単語ができている「ラッキーミノ」は金色で表示する
+const LUCKY_COLOR = "#ffc800";
 
 // 盤面・単語判定・得点・次のミノはサーバーが決める。画面側は操作と演出だけを担当する。
 const END_TITLES = {
@@ -77,6 +80,7 @@ function toPiece(view) {
         x: view.x,
         y: view.y,
         rotation: 0,
+        lucky: view.lucky === true,
         cells: view.cells.map(cell => [cell.x, cell.y, cell.letter])
     };
 }
@@ -256,6 +260,11 @@ async function lockPiece() {
     current = toPiece(result.nextPiece);
     visualY = current.y;
     showCurrentPiece = true;
+    announceLuckyPiece();
+}
+
+function announceLuckyPiece() {
+    if (current.lucky) showToastMessage('ラッキーミノ！');
 }
 
 function showResult(result) {
@@ -384,7 +393,7 @@ function draw() {
     if (showCurrentPiece && current) {
         for (const [cx, cy, letter] of current.cells) {
             const gy = visualY + cy;
-            if (gy >= -1) drawLetter(current.x + cx, gy, letter);
+            if (gy >= -1) drawLetter(current.x + cx, gy, letter, current.lucky ? LUCKY_COLOR : BLOCK_COLOR);
         }
     }
 }
@@ -403,10 +412,10 @@ function drawRoundedRect(x, y, width, height, radius) {
     ctx.closePath();
 }
 
-function drawLetter(col, row, letter) {
+function drawLetter(col, row, letter, color = BLOCK_COLOR) {
     const x = col * CELL;
     const y = row * CELL;
-    ctx.fillStyle = "#58cc02";
+    ctx.fillStyle = color;
     drawRoundedRect(x + 2, y + 2, CELL - 4, CELL - 4, 8);
     ctx.fill();
     ctx.fillStyle = "#5b3a1e";
@@ -492,6 +501,7 @@ async function startGame() {
     life = game.life;
     current = toPiece(game.piece);
     visualY = current.y;
+    announceLuckyPiece();
     updatePanels();
     document.getElementById('titleScreen').hidden = true;
     document.getElementById('gameStage').hidden = false;

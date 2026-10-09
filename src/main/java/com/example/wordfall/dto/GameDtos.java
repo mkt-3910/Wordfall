@@ -26,13 +26,13 @@ public final class GameDtos {
 
     public record GameResult(String reason, long score, int wordCount, long highScore, boolean newHighScore) { }
 
-    /** 回転前の向きのミノ。x, y は出現位置。 */
-    public record PieceView(int size, int x, int y, List<CellView> cells) {
-        public static PieceView of(Piece piece) {
+    /** 回転前の向きのミノ。x, y は出現位置。lucky はミノだけで単語ができている「ラッキーミノ」。 */
+    public record PieceView(int size, int x, int y, List<CellView> cells, boolean lucky) {
+        public static PieceView of(Piece piece, boolean lucky) {
             List<CellView> cells = piece.cells().stream()
                     .map(cell -> new CellView(cell.x(), cell.y(), String.valueOf(cell.letter())))
                     .toList();
-            return new PieceView(piece.shape().size(), piece.spawnX(), 0, cells);
+            return new PieceView(piece.shape().size(), piece.spawnX(), 0, cells, lucky);
         }
     }
 

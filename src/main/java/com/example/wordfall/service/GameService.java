@@ -27,6 +27,7 @@ import com.example.wordfall.game.GameEngine.EndReason;
 import com.example.wordfall.game.GameEngine.LandingOutcome;
 import com.example.wordfall.game.GameEngine.ScoredWord;
 import com.example.wordfall.game.GameState;
+import com.example.wordfall.game.Piece;
 import com.example.wordfall.model.MeaningResponse;
 import com.example.wordfall.repository.GameRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -67,10 +68,10 @@ public class GameService {
         for (Game unfinished : games.findByPlayerIdAndStatus(playerId, Game.Status.IN_PROGRESS)) {
             finish(unfinished, EndReason.QUIT);
         }
-        GameState state = GameState.newGame(random.nextInt());
+        GameState state = engine.newGame(random.nextInt());
         Game game = games.save(new Game(UUID.randomUUID(), playerId, state, LocalDateTime.now()));
         return new StartResponse(game.getId(), GameEngine.MAX_LANDINGS, state.life(),
-                state.board().rows(), PieceView.of(state.piece()));
+                state.board().rows(), pieceView(state.piece()));
     }
 
     @Transactional
@@ -113,7 +114,7 @@ public class GameService {
         GameResult result = outcome.endReason() == null ? null : finish(game, outcome.endReason());
         LandingResponse response = new LandingResponse(request.index(), words, outcome.multiWordBonus(),
                 state.combo(), state.score(), state.wordCount(), state.life(), outcome.lifeLost(),
-                state.board().rows(), result == null ? PieceView.of(state.piece()) : null, result);
+                state.board().rows(), result == null ? pieceView(state.piece()) : null, result);
         game.rememberLanding(key, writeResponse(response));
         return response;
     }
@@ -134,6 +135,10 @@ public class GameService {
         game.finish(reason, previousHigh, LocalDateTime.now());
         return new GameResult(reason.name(), game.getScore(), game.getWordCount(),
                 game.getHighScore(), game.isNewHighScore());
+    }
+
+    private PieceView pieceView(Piece piece) {
+        return PieceView.of(piece, engine.isLucky(piece));
     }
 
     private String writeResponse(LandingResponse response) {
