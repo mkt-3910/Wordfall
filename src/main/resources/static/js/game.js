@@ -493,7 +493,6 @@ async function startGame() {
     current = toPiece(game.piece);
     visualY = current.y;
     updatePanels();
-    document.getElementById('gameLimitText').textContent = '1プレイは最大' + game.maxLandings.toLocaleString() + '回の着地まで';
     document.getElementById('titleScreen').hidden = true;
     document.getElementById('gameStage').hidden = false;
     gameStarted = true;
