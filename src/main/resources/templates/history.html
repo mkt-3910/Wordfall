@@ -1,16 +1,17 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>プレイ履歴 - 言葉落とし</title>
-    <link rel ="stylesheet" th:href="@{/css/style.css}">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
 <body>
 
-<div class="stage">
+<main class="stage">
     <h1>プレイ履歴</h1>
 
-    <div id="historyList" class="history-list"></div>
+    <div id="historyList" class="history-list" aria-live="polite"></div>
 
     <div class="history-pager">
         <button id="prevBtn" class="primary-btn">前へ</button>
@@ -21,7 +22,7 @@
     <div class="history-back">
         <button id="backBtn" class="primary-btn">タイトルに戻る</button>
     </div>
-</div>
+</main>
 
 <script th:src="@{/js/history.js}"></script>
 </body>

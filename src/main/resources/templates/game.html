@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>言葉落とし</title>
     <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
@@ -9,9 +10,12 @@
 
 <div id="titleScreen" class="title-screen">
     <div class="title-card">
-        <h1>言葉落とし</h1>
+        <h1 th:text="${title}">言葉落とし</h1>
         <p class="title-desc">ミノを操作して、縦・横・斜めに英単語を完成させよう</p>
         <div class="title-highscore">ハイスコア：<span id="titleHighScore">-</span></div>
+        <p class="title-desc">PC・キーボード操作向け（矢印キーで移動・回転、Pで一時停止）</p>
+        <p class="title-desc">記録はこのブラウザごとに保存されます</p>
+        <p id="titleStatus" class="status-text" role="status"></p>
         <button id="startBtn" class="primary-btn">スタート</button>
         <button id="vocabularyBtn" class="primary-btn">単語帳を見る</button>
         <button id="historyBtn" class="primary-btn">履歴を見る</button>
@@ -19,26 +23,32 @@
     </div>
 </div>
 
-<div class="stage" id="gameStage" style="display:none;">
-    <h1>言葉落とし</h1>
+<div class="stage" id="gameStage" hidden>
+    <h1 th:text="${title}">言葉落とし</h1>
 
     <div class="layout">
-       <div class="board-wrap">
+        <div class="board-wrap">
             <canvas id="board" width="384" height="416"></canvas>
 
             <div id="wordToast" class="word-toast"></div>
 
             <div id="gameOverMessage" class="overlay">
-                <p class="overlay-title">ゲームオーバー</p>
+                <p id="resultTitle" class="overlay-title">ゲームオーバー</p>
                 <p id="finalScoreText" class="overlay-sub"></p>
                 <p id="highScoreText" class="overlay-sub"></p>
                 <button id="backToTitleBtn" class="primary-btn">タイトルに戻る</button>
             </div>
 
+            <div id="connectionMessage" class="overlay" role="alert">
+                <p id="connectionText">通信に失敗しました。盤面を復元して停止しています。</p>
+                <button id="retryConnectionBtn" class="primary-btn">再試行</button>
+                <button id="errorBackToTitleBtn" class="primary-btn" hidden>タイトルに戻る</button>
+            </div>
+
             <div id="pauseMessage" class="overlay">
                 <p class="overlay-title">一時停止</p>
                 <button id="resumeBtn" class="primary-btn">再開</button>
-                <button id="pauseBackToTitleBtn" class="primary-btn">タイトルに戻る</button>
+                <button id="pauseBackToTitleBtn" class="primary-btn">やめてタイトルに戻る</button>
             </div>
         </div>
 
@@ -65,6 +75,7 @@
                 <div id="wordLog" class="wordlog-list"></div>
             </div>
 
+            <p id="gameLimitText" class="status-text"></p>
             <button id="pauseBtn" class="primary-btn">一時停止(P)</button>
         </div>
     </div>
