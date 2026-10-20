@@ -5,114 +5,85 @@ const ctx = canvas.getContext('2d');
 const COLS = 12;
 const ROWS = 13;
 const CELL = 32;
+const DROP_INTERVAL = 900;
+const BLOCK_COLOR = "#58cc02";
+// ミノだけで単語ができている「ラッキーミノ」は金色で表示する
+const LUCKY_COLOR = "#ffc800";
+
+// 盤面・単語判定・得点・次のミノはサーバーが決める。画面側は操作と演出だけを担当する。
+const END_TITLES = {
+    GAME_OVER: 'ゲームオーバー',
+    LANDING_LIMIT: '上限の着地数に到達しました',
+    QUIT: 'プレイを終了しました'
+};
 
 // 盤面データ:各マスに文字(例:"A")か null が入る
-let grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+let grid = emptyGrid();
+let current = null;
+let visualY = 0;
 
 let score = 0;
 let life = 3;
 let wordCount = 0;
 let combo = 0;
-let bestComboThisGame = 0;
-let bestMultiWordThisGame = 0;
-let got4LetterThisGame = false;
-let got5LetterThisGame = false;
 let gameOver = false;
 let isProcessing = false;
 let gameStarted = false;
 let showCurrentPiece = true;
 let paused = false;
+let communicationFailed = false;
 
-let allFoundWords = [];
+let gameId = null;
+let landingIndex = 0;
 
-// ミノの形(積み木崩しと同じ座標データ)
-const SHAPES = {
-    I: { cells: [[0,1],[1,1],[2,1],[3,1]], size: 4 },
-    O: { cells: [[1,0],[2,0],[1,1],[2,1]], size: 4 },
-    T: { cells: [[1,0],[0,1],[1,1],[2,1]], size: 3 },
-    S: { cells: [[1,0],[2,0],[0,1],[1,1]], size: 3 },
-    Z: { cells: [[0,0],[1,0],[1,1],[2,1]], size: 3 },
-    J: { cells: [[0,0],[0,1],[1,1],[2,1]], size: 3 },
-    L: { cells: [[2,0],[0,1],[1,1],[2,1]], size: 3 },
-};
-const KEYS = Object.keys(SHAPES);
-
-function randomKey() {
-    return KEYS[Math.floor(Math.random() * KEYS.length)];
-}
-
-const LETTER_POOL = (
-    "E".repeat(14) + "A".repeat(11) + "I".repeat(10) + "O".repeat(8) +
-    "N".repeat(8) + "T".repeat(8) + "S".repeat(8) + "R".repeat(7) +
-    "L".repeat(5) + "D".repeat(5) + "U".repeat(3) + "C".repeat(3) +
-    "M".repeat(3) + "G".repeat(2) + "H".repeat(2) + "B".repeat(2) +
-    "P".repeat(2) + "F" + "Y" + "W" + "V" + "K" + "J" + "X" + "Q" + "Z"
-).split('');
-
-// ときどき、ミノ内の一直線に基本的な3文字単語を仕込む。
-// 完成形を固定しすぎず、偶然単語がそろう楽しさも残す。
-const WORD_FRIENDLY_CHANCE = 0.7;
-const COMMON_THREE_LETTER_WORDS = [
-    'ACT', 'ADD', 'AGE', 'AIR', 'ALL', 'AND', 'ANT', 'ANY', 'ARM', 'ART',
-    'ASK', 'BAG', 'BAT', 'BED', 'BEE', 'BIG', 'BOX', 'BOY', 'BUS', 'CAR',
-    'CAT', 'CUP', 'DAY', 'DOG', 'EAR', 'EAT', 'EGG', 'FAN', 'FOX', 'FUN',
-    'HAT', 'ICE', 'KEY', 'MAN', 'MAP', 'PEN', 'PIG', 'RED', 'RUN', 'SEA',
-    'SIT', 'SUN', 'TOP', 'TOY', 'WIN', 'APE', 'APP', 'ACE', 'AID', 'AIM',
-    'BAD', 'BAR', 'BIT', 'BUY', 'CAN', 'CAP', 'COW', 'CRY', 'CUT', 'DAD',
-    'DIE', 'DRY', 'END', 'EYE', 'FAR', 'FAT', 'FEW', 'FLY', 'GET', 'GOD',
-    'GUN', 'GUY', 'GYM', 'HIT', 'HOT', 'HOW', 'JOB', 'JOY', 'KID', 'LEG',
-    'LIE', 'LIP', 'LOT', 'LOW', 'MAY', 'MOM', 'NEW', 'NOT', 'NOW', 'NUT',
-    'OLD', 'ONE', 'OWN', 'PAY', 'PUT', 'RAW', 'SAD', 'SAY', 'SEE', 'SET',
-    'SKY', 'SON', 'TEA', 'TEN', 'TWO', 'USE', 'WAR', 'WAY', 'WEB', 'WET',
-    'WHY', 'YES', 'YET', 'ZOO'
-];
-const COMMON_FOUR_LETTER_WORDS = [
-    'BOOK', 'GAME', 'WORD', 'PLAY', 'READ', 'BLUE', 'HOME', 'LOVE', 'TIME', 'TREE',
-    'ABLE', 'BABY', 'BALL', 'BIRD', 'BOAT', 'CAKE', 'CALL', 'CARD', 'CITY', 'COOK',
-    'EASY', 'FACE', 'FARM', 'FIRE', 'FISH', 'FOOD', 'GIRL', 'GOOD', 'HAND', 'HELP',
-    'HOPE', 'JUMP', 'LIFE', 'MAKE', 'MILK', 'MOON', 'RAIN', 'RICE', 'ROAD', 'ROOM',
-    'SHOP', 'SING', 'SNOW', 'SONG', 'STAR', 'TEAM', 'WALK', 'WARM', 'WASH', 'WISH'
-];
-const WORD_LINES = {
-    I: [[[0, 1], [1, 1], [2, 1]], [[1, 1], [2, 1], [3, 1]]],
-    T: [[[0, 1], [1, 1], [2, 1]]],
-    J: [[[0, 1], [1, 1], [2, 1]]],
-    L: [[[0, 1], [1, 1], [2, 1]]]
-};
-
-function randomLetter() {
-    return LETTER_POOL[Math.floor(Math.random() * LETTER_POOL.length)];
-}
-
-function makePiece(key) {
-    const def = SHAPES[key];
-    const cells = def.cells.map(([x, y]) => [x, y, randomLetter()]);
-    const possibleLines = WORD_LINES[key];
-
-    if (possibleLines && Math.random() < WORD_FRIENDLY_CHANCE) {
-        const useFourLetterWord = key === 'I' && Math.random() < 0.35;
-        const words = useFourLetterWord ? COMMON_FOUR_LETTER_WORDS : COMMON_THREE_LETTER_WORDS;
-        const word = words[Math.floor(Math.random() * words.length)];
-        const line = useFourLetterWord
-            ? [[0, 1], [1, 1], [2, 1], [3, 1]]
-            : possibleLines[Math.floor(Math.random() * possibleLines.length)];
-        line.forEach(([wordX, wordY], index) => {
-            const cell = cells.find(([cellX, cellY]) => cellX === wordX && cellY === wordY);
-            cell[2] = word[index];
-        });
+class HttpError extends Error {
+    constructor(status) {
+        super('HTTP ' + status);
+        this.status = status;
     }
+}
 
+async function requestJson(url, options = {}) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    try {
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        if (!response.ok) throw new HttpError(response.status);
+        const text = await response.text();
+        return text ? JSON.parse(text) : null;
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+function postJson(url, value = {}) {
+    return requestJson(url, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value)
+    });
+}
+
+function emptyGrid() {
+    return Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+}
+
+// サーバーの盤面("."が空きマス)を画面用の配列にする
+function parseBoard(rows) {
+    if (!Array.isArray(rows) || rows.length !== ROWS || rows.some(row => row.length !== COLS)) {
+        throw new Error('盤面の応答が不正です');
+    }
+    return rows.map(row => [...row].map(ch => (ch === '.' ? null : ch)));
+}
+
+function toPiece(view) {
     return {
-        key,
-        size: def.size,
-        cells,
-        x: Math.floor((COLS - def.size) / 2),
-        y: 0,
+        size: view.size,
+        x: view.x,
+        y: view.y,
+        rotation: 0,
+        lucky: view.lucky === true,
+        cells: view.cells.map(cell => [cell.x, cell.y, cell.letter])
     };
 }
-
-let current = makePiece(randomKey());
-let visualY = current.y;
 
 function collides(piece, offX = 0, offY = 0, cells = piece.cells) {
     for (const [cx, cy] of cells) {
@@ -127,130 +98,7 @@ function collides(piece, offX = 0, offY = 0, cells = piece.cells) {
 function rotatePiece(piece) {
     const s = piece.size;
     const rotated = piece.cells.map(([x, y, letter]) => [s - 1 - y, x, letter]);
-    return { ...piece, cells: rotated };
-}
-
-function getAllLines() {
-    const lines = [];
-
-    for (let r = 0; r < ROWS; r++) {
-        const line = [];
-        for (let c = 0; c < COLS; c++) line.push({ r, c });
-        lines.push(line);
-    }
-    for (let c = 0; c < COLS; c++) {
-        const line = [];
-        for (let r = 0; r < ROWS; r++) line.push({ r, c });
-        lines.push(line);
-    }
-    for (let startCol = 0; startCol < COLS; startCol++) {
-        const line = [];
-        let r = 0, c = startCol;
-        while (r < ROWS && c < COLS) { line.push({ r, c }); r++; c++; }
-        lines.push(line);
-    }
-    for (let startRow = 1; startRow < ROWS; startRow++) {
-        const line = [];
-        let r = startRow, c = 0;
-        while (r < ROWS && c < COLS) { line.push({ r, c }); r++; c++; }
-        lines.push(line);
-    }
-    for (let startCol = 0; startCol < COLS; startCol++) {
-        const line = [];
-        let r = ROWS - 1, c = startCol;
-        while (r >= 0 && c < COLS) { line.push({ r, c }); r--; c++; }
-        lines.push(line);
-    }
-    for (let startRow = ROWS - 2; startRow >= 0; startRow--) {
-        const line = [];
-        let r = startRow, c = 0;
-        while (r >= 0 && c < COLS) { line.push({ r, c }); r--; c++; }
-        lines.push(line);
-    }
-
-    return lines;
-}
-
-function findRuns(line) {
-    const runs = [];
-    let cur = [];
-    for (const { r, c } of line) {
-        if (grid[r][c] !== null) {
-            cur.push({ r, c, ch: grid[r][c] });
-        } else {
-            if (cur.length >= 3) runs.push(cur);
-            cur = [];
-        }
-    }
-    if (cur.length >= 3) runs.push(cur);
-    return runs;
-}
-
-async function collectCandidateRuns() {
-    const lines = getAllLines();
-    const runs = lines.flatMap(findRuns);
-
-    // 各runの部分文字列(subs)を先に全部洗い出す
-    const runsWithSubs = runs.map(run => {
-        const s = run.map(cell => cell.ch).join('');
-        const n = s.length;
-        const subs = [];
-        const seen = new Set();
-        for (let start = 0; start < n; start++) {
-            for (let end = start + 3; end <= n; end++) {
-                const forward = s.slice(start, end);
-                const backward = [...forward].reverse().join('');
-                for (const word of [forward, backward]) {
-                    const key = `${start}:${end}:${word}`;
-                    if (!seen.has(key)) {
-                        seen.add(key);
-                        subs.push({ start, end, word });
-                    }
-                }
-            }
-        }
-        return { run, subs };
-    });
-
-    const uniqueWords = [...new Set(runsWithSubs.flatMap(({ subs }) => subs.map(sub => sub.word)))];
-    if (uniqueWords.length === 0) return [];
-
-    const checkResults = {};
-    const batchSize = 200;
-    for (let start = 0; start < uniqueWords.length; start += batchSize) {
-        const response = await fetch('/api/check-words', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(uniqueWords.slice(start, start + batchSize))
-        });
-        if (!response.ok) {
-            throw new Error(`単語判定に失敗しました (${response.status})`);
-        }
-        Object.assign(checkResults, await response.json());
-    }
-
-    // 結果をrunごとに組み立て
-    const allMatches = [];
-    for (const { run, subs } of runsWithSubs) {
-        const candidates = [];
-        subs.forEach(sub => {
-            if (checkResults[sub.word] === true) {
-                candidates.push({ start: sub.start, end: sub.end, len: sub.end - sub.start, word: sub.word });
-            }
-        });
-
-        candidates.sort((a, b) => b.len - a.len);
-        const used = new Array(run.length).fill(false);
-        for (const c of candidates) {
-            let overlap = false;
-            for (let i = c.start; i < c.end; i++) if (used[i]) { overlap = true; break; }
-            if (overlap) continue;
-            for (let i = c.start; i < c.end; i++) used[i] = true;
-            allMatches.push({ word: c.word, cells: run.slice(c.start, c.end) });
-        }
-    }
-
-    return allMatches;
+    return { ...piece, cells: rotated, rotation: (piece.rotation + 1) % 4 };
 }
 
 function applyGravity() {
@@ -325,280 +173,169 @@ function showScorePopup(col, row, points) {
     setTimeout(() => popup.remove(), 800);
 }
 
-function showWordToast(word,points) {
-    showToastMessage(`${word}完成! +${points}`);
-}
-// 完成した単語を、単語帳(データベース)に保存する
-async function saveWordLog(word, partOfSpeech, meaning) {
-    try {
-        const response = await fetch('/api/word-log', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                word: word,
-                partOfSpeech: partOfSpeech,
-                meaning: meaning
-            })
-        });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    } catch (e) {
-        console.error('単語帳への保存に失敗しました', e);
-    }
-}
-
 let clearingCells = null;
 let clearStartTime = 0;
 const CLEAR_DURATION = 220;
 
-const meaningCache = new Map();
-function fetchMeaning(word) {
-    if (!meaningCache.has(word)) {
-        const request =
-            fetch(`/api/meaning?word=${word}`)
-                .then(res => res.ok ? res.json() : null)
-                .then(result => {
-                    if (!result) meaningCache.delete(word);
-                    return result;
-                })
-                .catch(() => {
-                    meaningCache.delete(word);
-                    return null;
-                });
-        meaningCache.set(word, request);
-    }
-    return meaningCache.get(word);
-}
-
-async function fetchGuaranteedMeaning(word) {
-    for (let attempt = 0; attempt < 2; attempt++) {
-        const meaning = await fetchMeaning(word);
-        if (meaning) return meaning;
-        meaningCache.delete(word);
-    }
-    throw new Error(`${word}の意味を取得できませんでした`);
+function updatePanels() {
+    document.getElementById('score').textContent = score;
+    document.getElementById('life').textContent = life;
+    document.getElementById('wordCount').textContent = wordCount;
+    document.getElementById('combo').textContent = combo;
 }
 
 async function lockPiece() {
+    const request = { index: landingIndex, x: current.x, y: current.y, rotation: current.rotation };
+    const before = grid.map(row => [...row]);
     for (const [cx, cy, letter] of current.cells) {
-        const gx = current.x + cx;
         const gy = current.y + cy;
-        if (gy >= 0) grid[gy][gx] = letter;
+        if (gy >= 0) grid[gy][current.x + cx] = letter;
     }
-
     showCurrentPiece = false;
 
-    const firstMoves = applyGravity();
-    await animateGravity(firstMoves);
-
-    const candidates = await collectCandidateRuns();
-    const cellsToClear = new Set();
-    const wordLogEntries = [];
-
-    const meanings = await Promise.all(
-        candidates.map(candidate => fetchGuaranteedMeaning(candidate.word))
-    );
-
-    // 成立対象は日本語の意味を持つローカル辞書の単語だけなので、全件を完成扱いにする。
-    const successCount = candidates.length;
-
-    //コンボ:単語ができた着地が連続するとコンボが伸びる。できなければリセット
-    if(successCount > 0) {
-        combo++;
-    } else {
-        combo = 0;
-    }
-
-    if(combo > bestComboThisGame) {
-        bestComboThisGame = combo;
-    }
-    document.getElementById('combo').textContent = combo;
-
-    const hasBigWord = candidates.some(candidate => candidate.word.length >= 4);
-    if (hasBigWord) {
-        triggerScreenEffect('flash');
-    }
-
-    const comboBonus = combo > 1 ? (combo - 1) * 5 : 0;
-
-    //②マルチワードボーナス:1回の着地で2単語以上同時にできた時のボーナス
-    const multiWordBonus = successCount >= 2 ? successCount * 20 : 0;
-    if (successCount > bestMultiWordThisGame) {
-        bestMultiWordThisGame = successCount;
-    }
-    if(multiWordBonus > 0) {
-        score += multiWordBonus;
-    }
-    candidates.forEach((candidate, i) => {
-        const meaning = meanings[i];
-        if(candidate.word.length >= 4) {
-            got4LetterThisGame = true;
+    // 落下の演出とサーバーへの送信を同時に進める。失敗したら着地前の盤面に戻す。
+    let result;
+    try {
+        [result] = await Promise.all([
+            postJson(`/api/games/${gameId}/landings`, request),
+            animateGravity(applyGravity())
+        ]);
+        if (!result || result.index !== request.index || !Array.isArray(result.words)) {
+            throw new Error('着地の応答が不正です');
         }
-        if (candidate.word.length >= 5) {
-            got5LetterThisGame = true;
-        }
+    } catch (error) {
+        grid = before;
+        showCurrentPiece = true;
+        gravityMoves = null;
+        throw error;
+    }
+    landingIndex = request.index + 1;
+    combo = result.combo;
 
-        const points = candidate.word.length * 10 + comboBonus;
-
-        score += points;
-        wordCount++;
-        allFoundWords.push(candidate.word);
-        for (const cell of candidate.cells) {
-            cellsToClear.add(`${cell.r},${cell.c}`);
-        }
-        showWordToast(candidate.word, points);
-
-        const firstCell = candidate.cells[0];
-        showScorePopup(firstCell.c,firstCell.r,points);
-
-        const shortDefinition = simplifyDefinition(meaning.definition);
-        wordLogEntries.push(`${meaning.word} (${meaning.partOfSpeech ?? '?'}) - ${shortDefinition}`);
-
-        void saveWordLog(meaning.word, meaning.partOfSpeech ?? '', meaning.definition);
-    });
-
-    if (multiWordBonus > 0) {
-        showToastMessage(`${successCount}単語同時！ ボーナス +${multiWordBonus}`);
+    if (result.words.some(word => word.word.length >= 4)) triggerScreenEffect('flash');
+    for (const word of result.words) {
+        showToastMessage(`${word.word}完成! +${word.points}`);
+        const [row, col] = word.cells[0];
+        showScorePopup(col, row, word.points);
+    }
+    if (result.multiWordBonus > 0) {
+        showToastMessage(`${result.words.length}単語同時！ ボーナス +${result.multiWordBonus}`);
         triggerScreenEffect('shake');
     }
 
-    if (cellsToClear.size > 0) {
+    if (result.words.length > 0) {
         clearingCells = new Map();
-        for (const key of cellsToClear) {
-            const [r, c] = key.split(',').map(Number);
-            clearingCells.set(key, grid[r][c]);
+        for (const word of result.words) {
+            for (const [r, c] of word.cells) clearingCells.set(`${r},${c}`, grid[r][c]);
         }
         clearStartTime = performance.now();
         await wait(CLEAR_DURATION);
-        clearingCells = null;
-
-        for (const key of cellsToClear) {
+        for (const key of clearingCells.keys()) {
             const [r, c] = key.split(',').map(Number);
             grid[r][c] = null;
         }
-
-        const secondMoves = applyGravity();
-        await animateGravity(secondMoves);
+        clearingCells = null;
+        await animateGravity(applyGravity());
 
         const wordLog = document.getElementById('wordLog');
-        for (const text of wordLogEntries) {
+        for (const word of result.words) {
             const entry = document.createElement('p');
             entry.className = 'wordlog-entry';
-            entry.textContent = text;
+            entry.textContent = `${word.word} (${word.partOfSpeech}) - ${simplifyDefinition(word.definition)}`;
             wordLog.prepend(entry);
         }
     }
 
-    document.getElementById('score').textContent = score;
-    document.getElementById('wordCount').textContent = wordCount;
+    // 最後はサーバーの盤面に合わせる(ライフが減ったときの盤面リセットもここで反映される)
+    grid = parseBoard(result.board);
+    score = result.score;
+    wordCount = result.wordCount;
+    life = result.life;
+    updatePanels();
 
-    current = makePiece(randomKey());
+    if (result.result) {
+        showResult(result.result);
+        return;
+    }
+    current = toPiece(result.nextPiece);
     visualY = current.y;
     showCurrentPiece = true;
-
-    if (collides(current)) {
-        life--;
-        document.getElementById('life').textContent = life;
-
-        if (life <= 0) {
-            gameOver = true;
-            document.getElementById('finalScoreText').textContent = `スコア: ${score}　完成単語: ${wordCount}`;
-            document.getElementById('gameOverMessage').classList.add('show');
-            await checkAndSaveHighScore();
-            await sendAchievementCheck();
-            return;
-        }
-
-        grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
-    }
+    announceLuckyPiece();
 }
 
-async function checkAndSaveHighScore() {
-    try {
-        const res = await fetch('/api/score/high');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const high = await res.json();
-        const isNewHighScore = score > high.score;
-
-        const saveResponse = await fetch('/api/score', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                score: score,
-                wordCount: wordCount,
-                words: allFoundWords.join(',')
-            })
-        });
-        if (!saveResponse.ok) throw new Error(`HTTP ${saveResponse.status}`);
-
-        if (isNewHighScore) {
-            document.getElementById('highScoreText').textContent = '🎉 ハイスコア更新！';
-        } else {
-            document.getElementById('highScoreText').textContent = `ハイスコア: ${high.score}`;
-        }
-    } catch (e) {
-        console.error(e);
-    }
+function announceLuckyPiece() {
+    if (current.lucky) showToastMessage('ラッキーミノ！');
 }
 
-async function sendAchievementCheck() {
-    try {
-        const response = await fetch('/api/achievements/check', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                wordsCompletedThisGame: wordCount,
-                bestComboThisGame: bestComboThisGame,
-                bestMultiWordThisGame: bestMultiWordThisGame,
-                got4LetterThisGame: got4LetterThisGame,
-                got5LetterThisGame: got5LetterThisGame,
-                finalScore: score
-            })
-        });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    } catch (e) {
-        console.error('実績判定への送信に失敗しました', e);
-    }
+function showResult(result) {
+    gameOver = true;
+    showCurrentPiece = false;
+    document.getElementById('resultTitle').textContent = END_TITLES[result.reason] ?? 'ゲーム終了';
+    document.getElementById('finalScoreText').textContent = 'スコア: ' + result.score + '　完成単語: ' + result.wordCount;
+    document.getElementById('highScoreText').textContent = result.newHighScore
+        ? 'ハイスコア更新！' : 'ハイスコア: ' + result.highScore;
+    document.getElementById('gameOverMessage').classList.add('show');
+}
+
+// 通信エラーやサーバー側の一時的な失敗なら再試行できる。それ以外(状態の不一致など)は続行できない。
+function isRetryable(error) {
+    return !(error instanceof HttpError) || error.status >= 500 || error.status === 429;
+}
+
+function showConnectionError(error) {
+    const retryable = isRetryable(error);
+    document.getElementById('connectionText').textContent = retryable
+        ? '通信に失敗しました。盤面を復元して停止しています。'
+        : 'このプレイは続行できません。タイトルに戻ってください。';
+    document.getElementById('retryConnectionBtn').hidden = !retryable;
+    document.getElementById('errorBackToTitleBtn').hidden = retryable;
+    document.getElementById('connectionMessage').classList.add('show');
 }
 
 async function loadTitleHighScore() {
     try {
-        const res = await fetch('/api/score/high');
-        const high = await res.json();
+        const high = await requestJson('/api/score/high');
         document.getElementById('titleHighScore').textContent = high.score;
     } catch (e) {
-        document.getElementById('titleHighScore').textContent = '0';
+        document.getElementById('titleHighScore').textContent = '取得できませんでした';
     }
 }
 
 function moveHorizontal(dir) {
+    if (!canControlPiece()) return;
     if (!collides(current, dir, 0)) {
         current.x += dir;
     }
 }
 
 function tryRotate() {
+    if (!canControlPiece()) return;
     const rotated = rotatePiece(current);
     if (!collides(current, 0, 0, rotated.cells)) {
         current.cells = rotated.cells;
+        current.rotation = rotated.rotation;
     }
 }
 
+function canControlPiece() {
+    return gameStarted && !gameOver && !isProcessing && !paused && !communicationFailed;
+}
+
 async function softDrop() {
-    if (!gameStarted || gameOver || isProcessing || paused) return;
+    if (!canControlPiece()) return;
     if (!collides(current, 0, 1)) {
         current.y++;
-    } else {
-        isProcessing = true;
-        try {
-            await lockPiece();
-        } catch (error) {
-            console.error('ゲーム処理に失敗しました', error);
-            showToastMessage('通信に失敗しました。もう一度お試しください');
-        } finally {
-            isProcessing = false;
-        }
+        return;
+    }
+    isProcessing = true;
+    try {
+        await lockPiece();
+    } catch (error) {
+        console.error('ゲーム処理に失敗しました', error);
+        communicationFailed = true;
+        showConnectionError(error);
+    } finally {
+        isProcessing = false;
     }
 }
 
@@ -653,10 +390,10 @@ function draw() {
         }
     }
 
-    if (showCurrentPiece) {
+    if (showCurrentPiece && current) {
         for (const [cx, cy, letter] of current.cells) {
             const gy = visualY + cy;
-            if (gy >= -1) drawLetter(current.x + cx, gy, letter);
+            if (gy >= -1) drawLetter(current.x + cx, gy, letter, current.lucky ? LUCKY_COLOR : BLOCK_COLOR);
         }
     }
 }
@@ -675,10 +412,10 @@ function drawRoundedRect(x, y, width, height, radius) {
     ctx.closePath();
 }
 
-function drawLetter(col, row, letter) {
+function drawLetter(col, row, letter, color = BLOCK_COLOR) {
     const x = col * CELL;
     const y = row * CELL;
-    ctx.fillStyle = "#58cc02";
+    ctx.fillStyle = color;
     drawRoundedRect(x + 2, y + 2, CELL - 4, CELL - 4, 8);
     ctx.fill();
     ctx.fillStyle = "#5b3a1e";
@@ -731,8 +468,9 @@ window.addEventListener('keydown', async (e) => {
 setInterval(async () => {
     if (!gameStarted || gameOver || paused) return;
     await softDrop();
-}, 900);
+}, DROP_INTERVAL);
 
+// 描画はゲーム開始後だけ動かす
 function animationLoop() {
     const diff = current.y - visualY;
     visualY += diff * 0.25;
@@ -741,14 +479,54 @@ function animationLoop() {
     draw();
     requestAnimationFrame(animationLoop);
 }
-animationLoop();
 
-document.getElementById('startBtn').addEventListener('click', () => {
-    document.getElementById('titleScreen').style.display = 'none';
-    document.getElementById('gameStage').style.display = 'block';
+async function startGame() {
+    const button = document.getElementById('startBtn');
+    button.disabled = true;
+    let game;
+    try {
+        game = await postJson('/api/games');
+        if (!game?.gameId || !game.piece) throw new Error('ゲームを開始できません');
+        grid = parseBoard(game.board);
+    } catch (error) {
+        console.error('ゲームを開始できませんでした', error);
+        document.getElementById('titleStatus').textContent = error instanceof HttpError && error.status === 429
+            ? '開始の回数が多すぎます。少し待ってから再度スタートしてください'
+            : '開始できませんでした。通信を確認して再度スタートしてください';
+        button.disabled = false;
+        return;
+    }
+    gameId = game.gameId;
+    landingIndex = 0;
+    life = game.life;
+    current = toPiece(game.piece);
+    visualY = current.y;
+    announceLuckyPiece();
+    updatePanels();
+    document.getElementById('titleScreen').hidden = true;
+    document.getElementById('gameStage').hidden = false;
     gameStarted = true;
-});
+    requestAnimationFrame(animationLoop);
+}
 
+// 途中でやめたプレイを終了として記録する。失敗しても次のスタート時にサーバー側で終了扱いになる。
+async function quitGame() {
+    if (!gameStarted || gameOver) return;
+    gameOver = true;
+    try {
+        await postJson(`/api/games/${gameId}/quit`);
+    } catch (error) {
+        console.error('プレイの終了を記録できませんでした', error);
+    }
+}
+
+function togglePause() {
+    if (!gameStarted || gameOver || isProcessing || communicationFailed) return;
+    paused = !paused;
+    document.getElementById('pauseMessage').classList.toggle('show', paused);
+}
+
+document.getElementById('startBtn').addEventListener('click', startGame);
 
 document.getElementById('vocabularyBtn').addEventListener('click', () => {
     location.href = '/vocabulary';
@@ -762,18 +540,37 @@ document.getElementById('achievementsBtn').addEventListener('click', () => {
     location.href = '/achievements';
 });
 
-document.getElementById('backToTitleBtn').addEventListener('click', () => {
+document.getElementById('backToTitleBtn').addEventListener('click', () => location.reload());
+document.getElementById('pauseBtn').addEventListener('click', () => togglePause());
+document.getElementById('resumeBtn').addEventListener('click', () => togglePause());
+document.getElementById('pauseBackToTitleBtn').addEventListener('click', async () => {
+    await quitGame();
     location.reload();
+});
+document.getElementById('errorBackToTitleBtn').addEventListener('click', async () => {
+    await quitGame();
+    location.reload();
+});
+document.getElementById('retryConnectionBtn').addEventListener('click', async () => {
+    if (isProcessing) return;
+    communicationFailed = false;
+    document.getElementById('connectionMessage').classList.remove('show');
+    await softDrop();
+});
+
+// プレイ中にページを離れようとしたら確認し、離れた場合はプレイを終了として記録する。
+window.addEventListener('beforeunload', event => {
+    if (gameStarted && !gameOver) {
+        event.preventDefault();
+        event.returnValue = '';
+    }
+});
+window.addEventListener('pagehide', () => {
+    if (gameStarted && !gameOver) {
+        fetch(`/api/games/${gameId}/quit`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}', keepalive: true
+        }).catch(() => {});
+    }
 });
 
 loadTitleHighScore();
-
-function togglePause() {
-    if (gameOver) return;
-    paused = !paused;
-    document.getElementById('pauseMessage').classList.toggle('show', paused);
-}
-
-document.getElementById('pauseBtn').addEventListener('click', () => togglePause());
-document.getElementById('resumeBtn').addEventListener('click', () => togglePause());
-document.getElementById('pauseBackToTitleBtn').addEventListener('click', () => location.reload());

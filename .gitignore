@@ -17,3 +17,7 @@ Thumbs.db
 # ローカルの永続化データと秘密情報
 data/
 .env
+
+# 公開準備で置き換えた旧ファイルの退避先(確認後に削除してよい)
+_backup_before_public_release/
+*.log

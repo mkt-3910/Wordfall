@@ -1,10 +1,10 @@
-package com.example.wordfall.controller;
+package com.example.wordfall.model;
 
 public class MeaningResponse {
     
-    private String word;
-    private String partOfSpeech;
-    private String definition;
+    private final String word;
+    private final String partOfSpeech;
+    private final String definition;
 
     // コンストラクタ:3つの値を受け取って、フィールドにセットする
     public MeaningResponse(String word,String partOfSpeech,String definition) {

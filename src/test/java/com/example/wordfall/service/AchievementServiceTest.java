@@ -1,75 +1,51 @@
 package com.example.wordfall.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.List;
-import java.util.Optional;
+import java.time.LocalDateTime;
 import java.util.Set;
-import java.util.Arrays;
-import java.util.HashSet;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.transaction.annotation.Transactional;
 
-import com.example.wordfall.entity.GameStats;
-import com.example.wordfall.entity.UnlockedAchievement;
-import com.example.wordfall.model.AchievementDefinition;
-import com.example.wordfall.repository.GameStatsRepository;
-import com.example.wordfall.repository.UnlockedAchievementRepository;
+import com.example.wordfall.dto.ViewDtos;
+import com.example.wordfall.entity.Player;
+import com.example.wordfall.repository.PlayerRepository;
 
-@ExtendWith(MockitoExtension.class)
+@SpringBootTest
+@Transactional
 class AchievementServiceTest {
 
-    @Mock
-    private GameStatsRepository gameStatsRepository;
+    @Autowired
+    AchievementService service;
 
-    @Mock
-    private UnlockedAchievementRepository unlockedAchievementRepository;
-
-    private AchievementService service;
-
-    @BeforeEach
-    void setUp() {
-        service = new AchievementService(gameStatsRepository, unlockedAchievementRepository);
-    }
+    @Autowired
+    PlayerRepository players;
 
     @Test
-    void unlocksEveryThresholdReachedByTheGame() {
-        GameStats stats = new GameStats();
-        stats.setTotalWordsCompleted(9);
-        when(gameStatsRepository.findById(1L)).thenReturn(Optional.of(stats));
-        when(unlockedAchievementRepository.existsByAchievementKey(anyString())).thenReturn(false);
+    void unlocksEveryThresholdReachedOnceAndOnlyForThatPlayer() {
+        Player player = players.save(new Player(UUID.randomUUID(), LocalDateTime.now()));
+        Player other = players.save(new Player(UUID.randomUUID(), LocalDateTime.now()));
+        for (int i = 0; i < 4; i++) player.recordLanding(2, i + 1, true, false);
+        player.recordLanding(2, 5, false, false);
 
-        service.checkAndUnlock(1, 5, 2, true, false, 1000);
+        service.unlockReached(player, 1000);
+        service.unlockReached(player, 1000);
 
-        assertEquals(10, stats.getTotalWordsCompleted());
-        assertEquals(5, stats.getBestCombo());
-        assertEquals(2, stats.getBestMultiWord());
+        assertEquals(Set.of("word_10", "first_4letter", "combo_5", "multi_2", "score_1000"), unlocked(player));
+        assertTrue(unlocked(other).isEmpty());
+        assertEquals(10, service.getAchievements(other.getId()).size());
+    }
 
-        ArgumentCaptor<UnlockedAchievement> captor = ArgumentCaptor.forClass(UnlockedAchievement.class);
-        verify(unlockedAchievementRepository, times(5)).save(captor.capture());
-        Set<String> unlockedKeys = captor.getAllValues().stream()
-                .map(UnlockedAchievement::getAchievementKey)
+    private Set<String> unlocked(Player player) {
+        return service.getAchievements(player.getId()).stream()
+                .filter(ViewDtos.Achievement::unlocked)
+                .map(ViewDtos.Achievement::key)
                 .collect(Collectors.toSet());
-        assertEquals(new HashSet<>(Arrays.asList(
-                        "word_10", "first_4letter", "combo_5", "multi_2", "score_1000")),
-                unlockedKeys);
-    }
-
-    @Test
-    void definitionsCannotBeMutatedByCallers() {
-        List<AchievementDefinition> definitions = service.getAllDefinitions();
-        assertEquals(10, definitions.size());
-        assertThrows(UnsupportedOperationException.class, definitions::clear);
     }
 }

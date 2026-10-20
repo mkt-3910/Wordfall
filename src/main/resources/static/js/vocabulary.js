@@ -1,19 +1,24 @@
 let currentPage = 0;
+let latestRequest = 0;
 const PAGE_SIZE = 10;
 
 async function loadWordLog(page) {
+    const requestId = ++latestRequest;
     try {
         const res = await fetch(`/api/word-log/list?page=${page}&size=${PAGE_SIZE}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
+        if (requestId !== latestRequest) return;
 
         renderList(data.content);
         renderPagination(data);
     } catch (e) {
+        if (requestId !== latestRequest) return;
         console.error('単語帳の取得に失敗しました', e);
+        document.getElementById('wordList').replaceChildren();
         const emptyMessage = document.getElementById('emptyMessage');
         emptyMessage.textContent = '単語帳を読み込めませんでした';
-        emptyMessage.style.display = 'block';
+        emptyMessage.hidden = false;
     }
 }
 
@@ -24,10 +29,11 @@ function renderList(entries) {
     wordList.replaceChildren();
 
     if (!entries || entries.length === 0) {
-        emptyMessage.style.display = 'block';
+        emptyMessage.textContent = 'まだ完成した単語がありません';
+        emptyMessage.hidden = false;
         return;
     }
-    emptyMessage.style.display = 'none';
+    emptyMessage.hidden = true;
 
     for (const entry of entries) {
         const card = document.createElement('div');
