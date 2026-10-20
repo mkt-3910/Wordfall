@@ -1,0 +1,40 @@
+# Render の Blueprint。ダッシュボードの「New > Blueprint」でこのリポジトリを選ぶと、アプリと PostgreSQL がまとめて作られる。
+# free プランはお試し用(アプリは15分アクセスが無いと停止し、DB は作成から30日で期限切れになる)。
+# 本格的に公開するときは plan を starter(アプリ)/ basic-256mb(DB)などの有料プランに変える。
+services:
+  - type: web
+    name: wordfall
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: main
+    healthCheckPath: /
+    envVars:
+      - key: DB_HOST
+        fromDatabase:
+          name: wordfall-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: wordfall-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: wordfall-db
+          property: database
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: wordfall-db
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: wordfall-db
+          property: password
+
+databases:
+  - name: wordfall-db
+    plan: free
+    region: singapore
+    databaseName: wordfall
+    user: wordfall
+    postgresMajorVersion: "17"

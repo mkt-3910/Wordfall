@@ -35,3 +35,9 @@ jobs:
           SPRING_DATASOURCE_PASSWORD: wordfall
       - name: JavaScript tests
         run: node --test src/test/js/*.test.cjs
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the production image
+        run: docker build -t wordfall .
